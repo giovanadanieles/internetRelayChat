@@ -19,12 +19,12 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4096
+#define BUFFER_SZ 4097
 #define NICK_LEN 16
 
-// 	Objects of atomic types are the only objects that are free from data races, 
-// that is, they may be modified by two threads concurrently or modified by one
-// and read by another.
+// 	Atomic objects are the only objects that are free from data races, 
+// that is, they may be modified by two threads concurrently or 
+// modified by one and read by another.
 static _Atomic unsigned int cliCount = 0; 
 static int userID = 10;
 //  leaveFlag indicates whether the client is connected of not or if there's an 
@@ -40,7 +40,7 @@ typedef struct {
 	char nick[NICK_LEN];
 } Client;
 
-Client *clients[MAX_CLI];
+Client* clients[MAX_CLI];
 
 // Necessary to send messages between the clients
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -52,7 +52,7 @@ void str_overwrite_stdout() {
 }
 
 // Responsible for removing any undesirable '\n'
-void str_trim(char *arr, int len) {
+void str_trim(char* arr, int len) {
 	for (int i = 0; i < len; i++) {
 		if (arr[i] == '\n') {
 			arr[i] = '\0';
@@ -62,7 +62,7 @@ void str_trim(char *arr, int len) {
 }
 
 // Adding clients in the array of clients
-void add_client(Client *cli) {
+void add_client(Client* cli) {
 	pthread_mutex_lock(&clients_mutex);
 
 	for (int i = 0; i < MAX_CLI; i++) {
@@ -76,7 +76,7 @@ void add_client(Client *cli) {
 }
 
 // Removing clients from the array of clients
-void remove_client(int userID){
+void remove_client(int userID) {
 	pthread_mutex_lock(&clients_mutex);
 
 	// for (int i = 0; i < cliCount; i++) {
@@ -93,7 +93,7 @@ void remove_client(int userID){
 }
 
 // Sending messages to all the clients, except the sernder itself
-void send_message(char *msg, int userID) {
+void send_message(char* msg, int userID) {
 	pthread_mutex_lock(&clients_mutex);
 
 	for (int i = 0; i < MAX_CLI; i++) {
@@ -126,7 +126,7 @@ void* handle_client(void* arg) {
 	// Nicknames must be at least 3 characters long 
 	// and should not exceed the maximum length established above.
 	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) >= NICK_LEN - 1) {
-		printf("Erro: nick inválido.\n");
+		printf("Error: invalid nickname.\n");
 		leaveFlag = 1;
 	} else {
 		strcpy(cli->nick, nick);
@@ -138,38 +138,35 @@ void* handle_client(void* arg) {
 		send_message(buffer, cli->userID);
 	}
 
-	// bzero function replaces nbyte null bytes in the string
-	bzero(buffer, BUFFER_SZ);
+	memset(buffer, '\0', BUFFER_SZ);
 
-	// Exchange the messages
-	while(1) {
-		if(leaveFlag) break;
+	// Exchange messages
+	while (1) {
+		if (leaveFlag) break;
 		
 		int receive = recv(cli->sockfd, buffer, BUFFER_SZ, 0);
 
-		if(receive > 0){
-			if(strlen(buffer) > 0){
-				send_message(buffer, cli->userID);		// Sending the message
-
-				str_trim(buffer, strlen(buffer));		// Removing '\n'
-				printf("%s\n", buffer);	// Printing in the server who send the message to whom
+		if (receive > 0) {
+			if (strlen(buffer) > 0) {
+				send_message(buffer, cli->userID);
+				str_trim(buffer, strlen(buffer));
+				// Prints on the server who sent the message to whom
+				printf("%s\n", buffer);	
 			}
-		}
-		else if(receive == 0 || strcmp(buffer, "exit") == 0){	// Checking if the client wants to leave the chatroom
+		// Checks if the client wants to leave the chatroom		
+		} else if (receive == 0 || strcmp(buffer, "exit") == 0) {
 			sprintf(buffer, "%s has left.\n", cli->nick);
 			printf("%s", buffer);
 
 			send_message(buffer, cli->userID);
 
 			leaveFlag = 1;
-		}
-		else{	// It means that there's an error
+		} else {
 			printf("Error.\n");
-
 			leaveFlag = 1;
 		}
 
-		bzero(buffer, BUFFER_SZ);
+		memset(buffer, '\0', BUFFER_SZ);
 	}
 
 	// The client has left the chat, so...
@@ -177,7 +174,8 @@ void* handle_client(void* arg) {
 	remove_client(cli->userID);
 	cliCount--;
 	free(cli);
-	pthread_detach(pthread_self()); // Marks the thread identified by thread as detached
+	// Marks the thread identified by thread as detached
+	pthread_detach(pthread_self());
 
 	return NULL;
 }
