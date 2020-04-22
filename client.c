@@ -17,7 +17,7 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4096
+#define BUFFER_SZ 4086
 #define NICK_LEN 16
 
 volatile sig_atomic_t flag = 0;	// The value of a volative variable may change at any time,
@@ -71,18 +71,35 @@ void receiveMessageHandler(){
 void sendMessageHandler(){
 	char buffer[BUFFER_SZ] = {};
 	char msg[BUFFER_SZ + NICK_LEN] = {};
+	char sub[BUFFER_SZ] = {};
 
 	// While there's no errors and the chat is running
 	while(1){
 		strOverwriteStdout();
-		fgets(buffer, BUFFER_SZ, stdin); // Receives the message
-		strTrimLF(buffer, BUFFER_SZ);
 
-		if(strcmp(buffer, "exit") == 0) break;
-		else{
-			sprintf(msg, "%s: %s\n", nick, buffer);
-			send(sockfd, msg, strlen(msg), 0);
-		}
+		fgets(buffer, BUFFER_SZ, stdin); // Receives the message
+		
+		int j = 0;
+		if(strlen(buffer)>20){
+			while(j<strlen(buffer)){
+				int c = 0;
+				while (c < 20) {
+					sub[c] = buffer[j];
+					c++;
+					j++;
+				}
+			
+				
+				strTrimLF(sub, BUFFER_SZ);
+
+				if(strcmp(buffer, "exit") == 0) break;
+				else{
+					sprintf(msg, "%s: %s\n", nick, sub);
+					send(sockfd, msg, strlen(msg), 0);
+				}
+				memset(sub, '\0', sizeof(sub));
+			}	
+   		}
 
 		bzero(buffer, BUFFER_SZ);
 		bzero(msg, BUFFER_SZ+NICK_LEN);
