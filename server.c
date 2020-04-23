@@ -19,7 +19,7 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4097
+#define BUFFER_LEN 4097
 #define NICK_LEN 16
 
 // 	Atomic objects are the only objects that are free from data races, 
@@ -114,8 +114,9 @@ void send_message(char* msg, int userID) {
 // Handles clients, assigns their values and joins the chat
 void* handle_client(void* arg) {
 	leaveFlag = 0;
-	char buffer[BUFFER_SZ];
 	char nick[NICK_LEN];
+	// char msg[BUFFER_LEN];
+	char buffer[BUFFER_LEN+NICK_LEN];
 	
 	cliCount++;
 
@@ -131,42 +132,51 @@ void* handle_client(void* arg) {
 	} else {
 		strcpy(cli->nick, nick);
 		//  Notifying other clients that this client has joined the chatroom
+		printf("%s has joined!\n", cli->nick);
+
 		// sprintf() is used to store formatted data as a string
-		sprintf(buffer, "%s has joined!\n", cli->nick);
-		printf("%s", buffer);
+		// sprintf(buffer, "%s has joined!\n", cli->nick);
+		// printf("%s", buffer);
 
 		send_message(buffer, cli->userID);
 	}
 
-	memset(buffer, '\0', BUFFER_SZ);
+	memset(buffer, '\0', BUFFER_LEN);
 
 	// Exchange messages
 	while (1) {
 		if (leaveFlag) break;
 		
-		int receive = recv(cli->sockfd, buffer, BUFFER_SZ, 0);
+		int receive = recv(cli->sockfd, buffer, BUFFER_LEN, 0);
+		// int receive = recv(cli->sockfd, buffer, NICK_LEN+BUFFER_LEN, 0);
 
-		if (receive > 0) {
-			if (strlen(buffer) > 0) {
-				send_message(buffer, cli->userID);
-				str_trim(buffer, strlen(buffer));
-				// Prints on the server who sent the message to whom
-				printf("%s\n", buffer);	
-			}
+		
 		// Checks if the client wants to leave the chatroom		
-		} else if (receive == 0 || strcmp(buffer, "exit") == 0) {
-			sprintf(buffer, "%s has left.\n", cli->nick);
-			printf("%s", buffer);
+		if (receive == 0 || strcmp(buffer, "exit\n") == 0) {
+			// sprintf(buffer, "%s has left.\n", cli->nick);
+			// printf("%s", buffer);
+			printf("%s has left.\n", cli->nick);
 
 			send_message(buffer, cli->userID);
 
 			leaveFlag = 1;
+		} else if (receive > 0) {
+			if (strlen(buffer) > 0) {
+				printf("%s: %s\n", cli->nick, buffer);
+				// sprintf(msg, "%s: %s", cli->nick, buffer);
+				// send_message(msg, cli->userID);
+				// send_message(buffer, cli->userID);
+				// str_trim(buffer, strlen(buffer));
+				// Prints on the server who sent the message to whom
+				// printf("%s\n", msg);
+				// printf("%s\n", buffer);	
+			}
 		} else {
 			printf("Error.\n");
 			leaveFlag = 1;
 		}
 
-		memset(buffer, '\0', BUFFER_SZ);
+		memset(buffer, '\0', BUFFER_LEN);
 	}
 
 	// The client has left the chat, so...
@@ -182,15 +192,16 @@ void* handle_client(void* arg) {
 
 
 int main(int argc, char* const argv[]) {
-	if(argc != 2) {
-		printf("Error. Try: %s <port>\n", argv[0]);
+	// if(argc != 2) {
+	// 	printf("Error. Try: %s <port>\n", argv[0]);
 
-		// EXIT FAILURE
-		return 1;
-	}
+	// 	// EXIT FAILURE
+	// 	return 1;
+	// }
 
 	char* IP = "127.0.0.1";
-	int port = atoi(argv[1]);
+	int port = 1234;
+	// int port = atoi(argv[1]);
 
 	int option = 1;
 	int listenfd = 0, connfd = 0;

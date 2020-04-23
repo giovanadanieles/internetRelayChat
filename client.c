@@ -17,12 +17,12 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4097
+#define BUFFER_LEN 4097
 #define NICK_LEN 16
 
 //  The value of a volative variable may change at any time,
 // without any action being taken by the code the compiler finds nearby
-volatile sig_atomic_t flag = 0;	
+volatile sig_atomic_t leaveFlag = 0;	
 
 int sockfd = 0;
 char nick[NICK_LEN];
@@ -45,16 +45,16 @@ void str_trim(char* arr, int len) {
 
 // Checks if the client wants to exit the program
 void catch_ctrlC_and_exit() {
-	flag = 1;
+	leaveFlag = 1;
 }
 
 // Deals with receiving messages
 void receive_message_handler() {
-	char msg[BUFFER_SZ] = {};
+	char msg[BUFFER_LEN] = {};
 
 	// While there are messages to be received
 	while (1) {
-		int rcv = recv(sockfd, msg, BUFFER_SZ, 0);
+		int rcv = recv(sockfd, msg, BUFFER_LEN, 0);
 
 		// If something was written
 		if (rcv > 0) {
@@ -64,65 +64,86 @@ void receive_message_handler() {
 			break;
 		}
 
-		memset(msg, '\0', BUFFER_SZ);
+		memset(msg, '\0', BUFFER_LEN);
 	}
 }
 
 // Dealing with sending messages
-void send_message_handler(){
-	char buffer[BUFFER_SZ] = {};
-	char msg[BUFFER_SZ + NICK_LEN] = {};
+void send_message_handler() {
+	char buffer[BUFFER_LEN] = {};
+	char msg[BUFFER_LEN + NICK_LEN] = {};
 
 	// While there's no errors and the chat is running
-	while (1) {
-		str_overwrite_stdout();
-		
-		fgets(buffer, BUFFER_SZ, stdin); // Receives the message
-		str_trim(buffer, BUFFER_SZ);
-		
-		// Divides message if it is too long
-  //   	if (strlen(buffer) > BUFFER_SZ) {
-  //   		int j = 0;
-		// 	char sub[BUFFER_SZ] = {};
-      		
-  //     		while (j < strlen(buffer)) {
-  //       		int c = 0;
-  //       		while (c < BUFFER_SZ) {
-  //         			sub[c] = buffer[j];
-  //         			c++;
-  //         			j++;
-  //       		}
+	while (!leaveFlag) {		
+		do {
+			str_overwrite_stdout();
 
-		// 		str_trim(sub, BUFFER_SZ);
-		// 		sprintf(msg, "%s: %s\n", nick, buffer);
-		// 		send(sockfd, msg, strlen(msg), 0);
+			memset(buffer, '\0', BUFFER_LEN);
+			memset(msg, '\0', BUFFER_LEN+NICK_LEN);
 
-		// 		memset(sub, '\0', sizeof(sub));
-		// 	}
-		// } else { // If it's not too long, just print it
-			if (strcmp(buffer, "exit") == 0) break;
-			else {
-				sprintf(msg, "%s: %s\n", nick, buffer);
-				send(sockfd, msg, strlen(msg), 0);
+			fgets(buffer, BUFFER_LEN, stdin); // Receives the message
+			str_trim(buffer, strlen(buffer));
+
+			if (strcmp(buffer, "exit") == 0) {
+				leaveFlag = 1;
+				break;
+			} else {
+				// sprintf(msg, "%s: %s", nick, buffer);
+				// sprintf(msg, "%s: %s\n", nick, buffer);
+				// send(sockfd, msg, strlen(msg), 0);
+				send(sockfd, buffer, strlen(buffer), 0);
 			}
+
+		} while (buffer[strlen(buffer)-1] != '\n');
+		
+		// Means message's not over
+		// if (buffer[BUFFER_LEN-1] != '\n') {
+		// Divides message if it is too long
+    	// if (strlen(buffer) > BUFFER_LEN) {
+   //  		int j = 0;
+			// char sub[BUFFER_LEN] = {};
+      		
+   //    		while (j < strlen(buffer)) {
+   //      		int c = 0;
+   //      		while (c < BUFFER_LEN) {
+   //        			sub[c] = buffer[j];
+   //        			c++;
+   //        			j++;
+   //      		}
+
+				// str_trim(sub, BUFFER_LEN);
+				// sprintf(msg, "%s: %s", nick, buffer);
+				// sprintf(msg, "%s: %s\n", nick, buffer);
+				// send(sockfd, msg, strlen(msg), 0);
+
+				// memset(sub, '\0', sizeof(sub));
+			// }
+		// } else { // If it's not too long, just print it
+			// if (strcmp(buffer, "exit") == 0) break;
+			// else {
+			// 	// sprintf(msg, "%s: %s", nick, buffer);
+			// 	sprintf(msg, "%s: %s\n", nick, buffer);
+			// 	send(sockfd, msg, strlen(msg), 0);
+			// }
 		// }
 
-		memset(buffer, '\0', BUFFER_SZ);
-		memset(msg, '\0', BUFFER_SZ+NICK_LEN);
+		// memset(buffer, '\0', BUFFER_LEN);
+		// memset(msg, '\0', BUFFER_LEN+NICK_LEN);
 	}
 
 	catch_ctrlC_and_exit(2);
 }
 
 int main(int argc, char* const argv[]) {
-	if (argc != 2) {
-		printf("Error. Try: %s <port>\n", argv[0]);
-		// EXIT FAILURE
-		return 1;
-	}
+	// if (argc != 2) {
+	// 	printf("Error. Try: %s <port>\n", argv[0]);
+	// 	// EXIT FAILURE
+	// 	return 1;
+	// }
 
 	char* IP = "127.0.0.1";
-	int port = atoi(argv[1]);
+	int port = 1234;
+	// int port = atoi(argv[1]);
 
 	signal(SIGINT, catch_ctrlC_and_exit); // Interruption signal
 
@@ -189,7 +210,7 @@ int main(int argc, char* const argv[]) {
 
 	// Making the chat active and finalizing when it's the properly moment
 	while (1) {
-		if (flag) {
+		if (leaveFlag) {
 			printf("\nBye!\n");
 			break;
 		}
