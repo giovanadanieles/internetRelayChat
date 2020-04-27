@@ -68,10 +68,28 @@ void receive_message_handler() {
 	}
 }
 
+void lerString(char* buffer) {
+  
+    char c;
+    int cont = 0;
+
+    c = getchar();
+
+    while (c != '\n') {
+	    buffer[cont] = c;
+	    c = getchar();
+	    cont++;
+    }
+
+    buffer[cont] = '\0';
+    cont++;
+}
+
 // Dealing with sending messages
 void send_message_handler() {
 	char buffer[BUFFER_LEN] = {};
 	char msg[BUFFER_LEN + NICK_LEN] = {};
+	// char sub[BUFFER_LEN] = {};
 
 	// While there's no errors and the chat is running
 	while (!leaveFlag) {		
@@ -82,16 +100,14 @@ void send_message_handler() {
 			memset(msg, '\0', BUFFER_LEN+NICK_LEN);
 
 			fgets(buffer, BUFFER_LEN, stdin); // Receives the message
-			str_trim(buffer, strlen(buffer));
+			// str_trim(buffer, strlen(buffer)); // removes \n
 
-			if (strcmp(buffer, "exit") == 0) {
+			if (strcmp(buffer, "/quit\n") == 0) {
 				leaveFlag = 1;
 				break;
 			} else {
-				// sprintf(msg, "%s: %s", nick, buffer);
-				// sprintf(msg, "%s: %s\n", nick, buffer);
-				// send(sockfd, msg, strlen(msg), 0);
-				send(sockfd, buffer, strlen(buffer), 0);
+				sprintf(msg, "%s: %s", nick, buffer); // with \n
+				send(sockfd, msg, strlen(msg), 0);
 			}
 
 		} while (buffer[strlen(buffer)-1] != '\n');
@@ -99,36 +115,37 @@ void send_message_handler() {
 		// Means message's not over
 		// if (buffer[BUFFER_LEN-1] != '\n') {
 		// Divides message if it is too long
-    	// if (strlen(buffer) > BUFFER_LEN) {
-   //  		int j = 0;
-			// char sub[BUFFER_LEN] = {};
-      		
-   //    		while (j < strlen(buffer)) {
-   //      		int c = 0;
-   //      		while (c < BUFFER_LEN) {
-   //        			sub[c] = buffer[j];
-   //        			c++;
-   //        			j++;
-   //      		}
+  //   	int j = 0;
+		// if (strlen(buffer) > BUFFER_LEN) {
+		// 	while (j < strlen(buffer)) {
+		// 		int c = 0;
+		// 		while (c < BUFFER_LEN) {
+		// 			sub[c] = buffer[j];
+		// 			c++;
+		// 			j++;
+		// 		}
+			
+		// 		str_trim(sub, BUFFER_LEN);
 
-				// str_trim(sub, BUFFER_LEN);
-				// sprintf(msg, "%s: %s", nick, buffer);
-				// sprintf(msg, "%s: %s\n", nick, buffer);
-				// send(sockfd, msg, strlen(msg), 0);
+		// 		if (strcmp(buffer, "exit") == 0) break;
+		// 		else {
+		// 			sprintf(msg, "%s: %s\n", nick, sub);
+		// 			send(sockfd, msg, strlen(msg), 0);
+		// 		}
 
-				// memset(sub, '\0', sizeof(sub));
-			// }
-		// } else { // If it's not too long, just print it
-			// if (strcmp(buffer, "exit") == 0) break;
-			// else {
-			// 	// sprintf(msg, "%s: %s", nick, buffer);
-			// 	sprintf(msg, "%s: %s\n", nick, buffer);
-			// 	send(sockfd, msg, strlen(msg), 0);
-			// }
+		// 		memset(sub, '\0', sizeof(sub));
+		// 	}	
+  //  		} else {
+		// 	str_trim(buffer, BUFFER_LEN);
+
+		// 	if (strcmp(buffer, "exit") == 0) break;
+		// 	else {
+		// 		sprintf(msg, "%s: %s\n", nick,buffer);	
+		// 		send(sockfd, msg, strlen(msg), 0);
+		// 	}
+
+		// 	memset(sub, '\0', sizeof(sub));
 		// }
-
-		// memset(buffer, '\0', BUFFER_LEN);
-		// memset(msg, '\0', BUFFER_LEN+NICK_LEN);
 	}
 
 	catch_ctrlC_and_exit(2);

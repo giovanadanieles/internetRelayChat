@@ -111,12 +111,22 @@ void send_message(char* msg, int userID) {
 	pthread_mutex_unlock(&clients_mutex);
 }
 
+void nick_trim(char* buffer, char* msg) {
+	int i = 0;
+
+	while (buffer[i] != ':') {
+		i++;
+	}
+
+	strcpy(msg, buffer+i);
+}
+
 // Handles clients, assigns their values and joins the chat
 void* handle_client(void* arg) {
 	leaveFlag = 0;
-	char nick[NICK_LEN];
-	// char msg[BUFFER_LEN];
-	char buffer[BUFFER_LEN+NICK_LEN];
+	char nick[NICK_LEN] = {};
+	char msg[BUFFER_LEN] = {};
+	char buffer[BUFFER_LEN+NICK_LEN] = {};
 	
 	cliCount++;
 
@@ -133,11 +143,6 @@ void* handle_client(void* arg) {
 		strcpy(cli->nick, nick);
 		//  Notifying other clients that this client has joined the chatroom
 		printf("%s has joined!\n", cli->nick);
-
-		// sprintf() is used to store formatted data as a string
-		// sprintf(buffer, "%s has joined!\n", cli->nick);
-		// printf("%s", buffer);
-
 		send_message(buffer, cli->userID);
 	}
 
@@ -147,29 +152,19 @@ void* handle_client(void* arg) {
 	while (1) {
 		if (leaveFlag) break;
 		
-		int receive = recv(cli->sockfd, buffer, BUFFER_LEN, 0);
-		// int receive = recv(cli->sockfd, buffer, NICK_LEN+BUFFER_LEN, 0);
-
+		int receive = recv(cli->sockfd, buffer, NICK_LEN+BUFFER_LEN, 0);
 		
-		// Checks if the client wants to leave the chatroom		
-		if (receive == 0 || strcmp(buffer, "exit\n") == 0) {
-			// sprintf(buffer, "%s has left.\n", cli->nick);
-			// printf("%s", buffer);
+		// Checks if the client wants to leave the chatroom	
+		nick_trim(buffer, msg);
+		if (receive == 0 || strcmp(msg, "/quit\n") == 0) {
 			printf("%s has left.\n", cli->nick);
-
 			send_message(buffer, cli->userID);
-
 			leaveFlag = 1;
 		} else if (receive > 0) {
 			if (strlen(buffer) > 0) {
-				printf("%s: %s\n", cli->nick, buffer);
-				// sprintf(msg, "%s: %s", cli->nick, buffer);
-				// send_message(msg, cli->userID);
-				// send_message(buffer, cli->userID);
-				// str_trim(buffer, strlen(buffer));
+				send_message(buffer, cli->userID);
 				// Prints on the server who sent the message to whom
-				// printf("%s\n", msg);
-				// printf("%s\n", buffer);	
+				printf("%s", buffer);
 			}
 		} else {
 			printf("Error.\n");
@@ -177,6 +172,7 @@ void* handle_client(void* arg) {
 		}
 
 		memset(buffer, '\0', BUFFER_LEN);
+		memset(msg, '\0', BUFFER_LEN);
 	}
 
 	// The client has left the chat, so...
