@@ -19,7 +19,7 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4096
+#define BUFFER_SZ 5000
 #define NICK_LEN 16
 
 // 	Objects of atomic types are the only objects that are free from data races, 

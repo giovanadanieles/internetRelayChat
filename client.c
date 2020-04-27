@@ -17,7 +17,7 @@
 #include <signal.h>
 
 #define MAX_CLI 10
-#define BUFFER_SZ 4097
+#define BUFFER_SZ 5000
 #define NICK_LEN 16
 
 //  The value of a volative variable may change at any time,
@@ -80,11 +80,15 @@ void send_message_handler(){
 
 		fgets(buffer, BUFFER_SZ, stdin); // Receives the message
 		
+		printf("\n%lu\n", strlen(buffer));
+		
 		int j = 0;
-		if(strlen(buffer)>20){
-			while(j<strlen(buffer)){
+		int tam = 4097;
+
+		if(strlen(buffer) > tam){
+			while(j < strlen(buffer)){
 				int c = 0;
-				while (c < 20) {
+				while (c < tam && j < strlen(buffer)) {
 					sub[c] = buffer[j];
 					c++;
 					j++;
