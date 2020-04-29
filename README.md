@@ -8,14 +8,14 @@ Marina Fontes Alcântara Machado		10692040<br>
 <br>
 <h3>Para compilar:</h3>
 <ul>
-	- cliente e servidor: make
-	- cliente: make client
-	- servidor: make server
+	<li>cliente e servidor: make</li>
+	<li>cliente: make client</li>
+	<li>servidor: make server</li>
 </ul>
 <br>
 <h3>Para executar:</h3>
 !! o servidor deve ser executado antes de qualquer cliente
 <ul>
-	- servidor: make run_server
-	- cliente: make run_client
+	<li>servidor: make run_server</li>
+	<li>cliente: make run_client</li>
 </ul>
