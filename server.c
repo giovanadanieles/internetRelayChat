@@ -18,9 +18,9 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define MAX_CLI 10
-#define BUFFER_LEN 4097
+#define MAX_CLI 2
 #define NICK_LEN 16
+#define BUFFER_LEN 2049
 
 // 	Atomic objects are the only objects that are free from data races, 
 // that is, they may be modified by two threads concurrently or 
@@ -28,7 +28,7 @@
 static _Atomic unsigned int cliCount = 0; 
 static int userID = 10;
 //  leaveFlag indicates whether the client is connected of not or if there's an 
-// error, that is, indicates if the client should be disconnected or not.
+// Erro, that is, indicates if the client should be disconnected or not.
 static int leaveFlag = 0;	
 						
 //  Client structure: stores the address, its socket descriptor, 
@@ -101,7 +101,7 @@ void send_message(char* msg, int userID) {
 			if (clients[i]->userID != userID) {
 				// If the write syscall fails:
 				if (write(clients[i]->sockfd, msg, strlen(msg)) < 0 && leaveFlag == 0) {
-					printf("Error: write to descriptor.\n");
+					printf("!! Erro\n");
 					break;
 				}
 			}
@@ -112,13 +112,12 @@ void send_message(char* msg, int userID) {
 }
 
 void nick_trim(char* buffer, char* msg) {
-	int i = 0;
-
-	while (buffer[i] != ':') {
-		i++;
+	for (int j = 0; j < NICK_LEN; j++) {
+		if (buffer[j] == ':') {
+			strcpy(msg, buffer+j+1);
+			break;
+		}
 	}
-
-	strcpy(msg, buffer+i);
 }
 
 // Handles clients, assigns their values and joins the chat
@@ -137,12 +136,12 @@ void* handle_client(void* arg) {
 	// Nicknames must be at least 3 characters long 
 	// and should not exceed the maximum length established above.
 	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) >= NICK_LEN - 1) {
-		printf("Error: invalid nickname.\n");
+		printf("Erro: nick inválido.\n");
 		leaveFlag = 1;
 	} else {
 		strcpy(cli->nick, nick);
 		//  Notifying other clients that this client has joined the chatroom
-		printf("%s has joined!\n", cli->nick);
+		printf("%s entrou!\n", cli->nick);
 		send_message(buffer, cli->userID);
 	}
 
@@ -153,21 +152,25 @@ void* handle_client(void* arg) {
 		if (leaveFlag) break;
 		
 		int receive = recv(cli->sockfd, buffer, NICK_LEN+BUFFER_LEN, 0);
-		
+
 		// Checks if the client wants to leave the chatroom	
 		nick_trim(buffer, msg);
-		if (receive == 0 || strcmp(msg, "/quit\n") == 0) {
-			printf("%s has left.\n", cli->nick);
+		if (receive == 0 || strcmp(msg, "/quit") == 0) {
+			printf("%s saiu.\n", cli->nick);
 			send_message(buffer, cli->userID);
 			leaveFlag = 1;
 		} else if (receive > 0) {
 			if (strlen(buffer) > 0) {
+				str_overwrite_stdout();
+
 				send_message(buffer, cli->userID);
 				// Prints on the server who sent the message to whom
+				// printf("\033[0;31m");
 				printf("%s", buffer);
+				// printf("\033[0m");
 			}
 		} else {
-			printf("Error.\n");
+			printf("Erro.\n");
 			leaveFlag = 1;
 		}
 
@@ -189,7 +192,7 @@ void* handle_client(void* arg) {
 
 int main(int argc, char* const argv[]) {
 	// if(argc != 2) {
-	// 	printf("Error. Try: %s <port>\n", argv[0]);
+	// 	printf("Erro. Try: %s <port>\n", argv[0]);
 
 	// 	// EXIT FAILURE
 	// 	return 1;
@@ -224,9 +227,9 @@ int main(int argc, char* const argv[]) {
 	signal(SIGPIPE, SIG_IGN); 
 
 	// This helps in manipulating options for the socket referred by the 
-	// descriptor sockfd; also prevents errors.
+	// descriptor sockfd; also prevents Erros.
 	if (setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char*) &option, sizeof(option)) < 0) {
-		printf("Error: setsockopt.\n");
+		printf("Erro: setsockopt.\n");
 
 		// EXIT FAILURE;
 		exit(1);
@@ -235,7 +238,7 @@ int main(int argc, char* const argv[]) {
 	// After creating the socket, the bind() function binds the socket to the 
 	// address and the port number specified in addr.
 	if (bind(listenfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
-		printf("Error: bind.\n");
+		printf("Erro: bind.\n");
 
 		// EXIT FAILURE
 		exit(1);
@@ -244,15 +247,29 @@ int main(int argc, char* const argv[]) {
 	// listen() puts the server socket in a passsive mode, 
 	// where it waits for a client's approach to make a connection
 	if(listen(listenfd, 10) < 0){
-		printf("Error: listen.\n");
+		printf("Erro: listen.\n");
 
 		// EXIT FAILURE
 		exit(1);
 	}
 
 	// -------------------- The Chatroom --------------------
-	// If there has been no error so far, the chat server will be available.
-	printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	// If there has been no Erro so far, the chat server will be available.
+	// printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	printf(" _______  _______  _______  _______         _______  _______  _______  _______ ");
+	printf("\n|  _    ||   _   ||       ||       |       |       ||   _   ||       ||       |");
+	printf("\n| |_|   ||  |_|  ||_     _||    ___| ____  |    _  ||  |_|  ||    _  ||   _   |");
+	printf("\n|       ||       |  |   |  |   |___ |____| |   |_| ||       ||   |_| ||  | |  |");
+	printf("\n|  _   | |       |  |   |  |    ___|       |    ___||       ||    ___||  |_|  |");
+	printf("\n| |_|   ||   _   |  |   |  |   |___        |   |    |   _   ||   |    |       |");
+	printf("\n|_______||__| |__|  |___|  |_______|       |___|    |__| |__||___|    |_______|");
+	printf("\n ___   _  _______  ___      ___   __    _  ___   _  __   __  _______  ___      ");
+	printf("\n|   | | ||   _   ||   |    |   | |  |  | ||   | | ||  | |  ||       ||   |     ");
+	printf("\n|   |_| ||  |_|  ||   |    |   | |   |_| ||   |_| ||  | |  ||   _   ||   |     ");
+	printf("\n|      _||       ||   |    |   | |       ||      _||  |_|  ||  | |  ||   |     ");
+	printf("\n|     |_ |       ||   |___ |   | |  _    ||     |_ |       ||  |_|  ||   |___  ");
+	printf("\n|    _  ||   _   ||       ||   | | | |   ||    _  ||       ||       ||       | ");
+	printf("\n|___| |_||__| |__||_______||___| |_|  |__||___| |_||_______||_______||_______| \n\n");
 
 	//  "Infinite loop": responsible for communicating, receiving messages 
 	// from A client and sending them to everyone else.
@@ -265,9 +282,9 @@ int main(int argc, char* const argv[]) {
 
 		//  If the maximum number of clients has not yet been reached, 
 		// the connection is made; otherwise, the client will be disconnected.
-		if (MAX_CLI == (cliCount + 1)) {
-			printf("Connection rejected: chatroom full.\n");
-			//print_ip_addr(cli_addr);
+		if (MAX_CLI < (cliCount + 1)) {
+			char tmp[70] = {"Opa, sala cheia! Quem sabe na próxima...\nPressione ENTER para sair.\n"};
+			write(connfd, tmp, strlen(tmp));
 			close(connfd);
 			continue;
 		}

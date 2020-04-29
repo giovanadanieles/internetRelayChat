@@ -16,8 +16,8 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define MAX_CLI 10
-#define BUFFER_LEN 4097
+#define BUFFER_LEN 2049
+#define BUFFER_MAX 4097
 #define NICK_LEN 16
 
 //  The value of a volative variable may change at any time,
@@ -50,11 +50,11 @@ void catch_ctrlC_and_exit() {
 
 // Deals with receiving messages
 void receive_message_handler() {
-	char msg[BUFFER_LEN] = {};
+	char msg[NICK_LEN+BUFFER_LEN] = {};
 
 	// While there are messages to be received
 	while (1) {
-		int rcv = recv(sockfd, msg, BUFFER_LEN, 0);
+		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN, 0);
 
 		// If something was written
 		if (rcv > 0) {
@@ -87,65 +87,46 @@ void lerString(char* buffer) {
 
 // Dealing with sending messages
 void send_message_handler() {
-	char buffer[BUFFER_LEN] = {};
-	char msg[BUFFER_LEN + NICK_LEN] = {};
-	// char sub[BUFFER_LEN] = {};
+	char buffer[BUFFER_MAX] = {};
+	char msg[NICK_LEN+BUFFER_LEN] = {};
 
 	// While there's no errors and the chat is running
 	while (!leaveFlag) {		
-		do {
-			str_overwrite_stdout();
 
-			memset(buffer, '\0', BUFFER_LEN);
-			memset(msg, '\0', BUFFER_LEN+NICK_LEN);
+		str_overwrite_stdout();
 
-			fgets(buffer, BUFFER_LEN, stdin); // Receives the message
-			// str_trim(buffer, strlen(buffer)); // removes \n
+		fgets(buffer, BUFFER_MAX, stdin); // Receives the message
+		str_trim(buffer, strlen(buffer)); // removes \n
 
-			if (strcmp(buffer, "/quit\n") == 0) {
-				leaveFlag = 1;
-				break;
-			} else {
-				sprintf(msg, "%s: %s", nick, buffer); // with \n
-				send(sockfd, msg, strlen(msg), 0);
-			}
-
-		} while (buffer[strlen(buffer)-1] != '\n');
-		
-		// Means message's not over
-		// if (buffer[BUFFER_LEN-1] != '\n') {
-		// Divides message if it is too long
-  //   	int j = 0;
-		// if (strlen(buffer) > BUFFER_LEN) {
-		// 	while (j < strlen(buffer)) {
-		// 		int c = 0;
-		// 		while (c < BUFFER_LEN) {
-		// 			sub[c] = buffer[j];
-		// 			c++;
-		// 			j++;
-		// 		}
+		if (strcmp(buffer, "/quit") == 0) {
+			leaveFlag = 1;
+			break;
+		} else if (strlen(buffer) > BUFFER_LEN) {
+			int j = 0;
+			char sub[BUFFER_LEN] = {};
 			
-		// 		str_trim(sub, BUFFER_LEN);
+			while (j < strlen(buffer)) {
+				int c = 0;
+				while (c < BUFFER_LEN && j < strlen(buffer)) {
+					sub[c] = buffer[j];
+					c++;
+					j++;
+				}
+				
+				str_trim(sub, BUFFER_LEN);
 
-		// 		if (strcmp(buffer, "exit") == 0) break;
-		// 		else {
-		// 			sprintf(msg, "%s: %s\n", nick, sub);
-		// 			send(sockfd, msg, strlen(msg), 0);
-		// 		}
+				sprintf(msg, "%s: %s\n", nick, sub);
+				send(sockfd, msg, strlen(msg), 0);
+				
+				memset(sub, '\0', sizeof(sub));
+			}
+		} else {
+			sprintf(msg, "%s: %s\n", nick, buffer);
+			send(sockfd, msg, strlen(msg), 0);
+		}
 
-		// 		memset(sub, '\0', sizeof(sub));
-		// 	}	
-  //  		} else {
-		// 	str_trim(buffer, BUFFER_LEN);
-
-		// 	if (strcmp(buffer, "exit") == 0) break;
-		// 	else {
-		// 		sprintf(msg, "%s: %s\n", nick,buffer);	
-		// 		send(sockfd, msg, strlen(msg), 0);
-		// 	}
-
-		// 	memset(sub, '\0', sizeof(sub));
-		// }
+		memset(buffer, '\0', BUFFER_LEN);
+		memset(msg, '\0', BUFFER_LEN+NICK_LEN);
 	}
 
 	catch_ctrlC_and_exit(2);
@@ -153,7 +134,7 @@ void send_message_handler() {
 
 int main(int argc, char* const argv[]) {
 	// if (argc != 2) {
-	// 	printf("Error. Try: %s <port>\n", argv[0]);
+	// 	printf("Erro. Try: %s <port>\n", argv[0]);
 	// 	// EXIT FAILURE
 	// 	return 1;
 	// }
@@ -165,13 +146,13 @@ int main(int argc, char* const argv[]) {
 	signal(SIGINT, catch_ctrlC_and_exit); // Interruption signal
 
 	// Manages client's nickname
-	printf("Enter your name: ");
+	printf("Qual o seu nick? ");
 	fgets(nick, NICK_LEN, stdin);
 	str_trim(nick, NICK_LEN);
 
 	// Checks if the given nickname is valid
 	if (strlen(nick) > NICK_LEN - 1 || strlen(nick) < 2) {
-		printf("Enter a valid nickname.\n");
+		printf("Digite um nick válido.\n");
 		// EXIT FAILURE
 		exit(1);
 	}
@@ -195,7 +176,7 @@ int main(int argc, char* const argv[]) {
 																					//parameter s specifies an unconnected 
 																					//datagram or stream socket. 
 	if (err == -1) {
-		printf("Error: connect.\n");
+		printf("Erro: connect.\n");
 		// EXIT FAILURE
 		exit(1);
 	}
@@ -206,13 +187,27 @@ int main(int argc, char* const argv[]) {
 	// -------------------- The Chatroom --------------------
 	//  If there has been no error so far, 
 	// the client is now connected to the chat
-	printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	// printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	printf(" _______  _______  _______  _______         _______  _______  _______  _______ ");
+	printf("\n|  _    ||   _   ||       ||       |       |       ||   _   ||       ||       |");
+	printf("\n| |_|   ||  |_|  ||_     _||    ___| ____  |    _  ||  |_|  ||    _  ||   _   |");
+	printf("\n|       ||       |  |   |  |   |___ |____| |   |_| ||       ||   |_| ||  | |  |");
+	printf("\n|  _   | |       |  |   |  |    ___|       |    ___||       ||    ___||  |_|  |");
+	printf("\n| |_|   ||   _   |  |   |  |   |___        |   |    |   _   ||   |    |       |");
+	printf("\n|_______||__| |__|  |___|  |_______|       |___|    |__| |__||___|    |_______|");
+	printf("\n ___   _  _______  ___      ___   __    _  ___   _  __   __  _______  ___      ");
+	printf("\n|   | | ||   _   ||   |    |   | |  |  | ||   | | ||  | |  ||       ||   |     ");
+	printf("\n|   |_| ||  |_|  ||   |    |   | |   |_| ||   |_| ||  | |  ||   _   ||   |     ");
+	printf("\n|      _||       ||   |    |   | |       ||      _||  |_|  ||  | |  ||   |     ");
+	printf("\n|     |_ |       ||   |___ |   | |  _    ||     |_ |       ||  |_|  ||   |___  ");
+	printf("\n|    _  ||   _   ||       ||   | | | |   ||    _  ||       ||       ||       | ");
+	printf("\n|___| |_||__| |__||_______||___| |_|  |__||___| |_||_______||_______||_______| \n\n");
 
 	// Defining two threads: one to receive messages and another to send messages
 	pthread_t sendMsgThread;
 
 	if (pthread_create(&sendMsgThread, NULL, (void*) send_message_handler, NULL) != 0) {
-		printf("Error: pthread.\n");
+		printf("Erro: pthread.\n");
 		// EXIT FAILURE
 		exit(1);
 	}
@@ -220,7 +215,7 @@ int main(int argc, char* const argv[]) {
 	pthread_t receiveMsgThread;
 
 	if (pthread_create(&receiveMsgThread, NULL, (void*) receive_message_handler, NULL) != 0) {
-		printf("Error: pthread.\n");
+		printf("Erro: pthread.\n");
 		// EXIT FAILURE
 		exit(1);
 	}
@@ -228,12 +223,12 @@ int main(int argc, char* const argv[]) {
 	// Making the chat active and finalizing when it's the properly moment
 	while (1) {
 		if (leaveFlag) {
-			printf("\nBye!\n");
 			break;
 		}
 	}
 
 	// The client has left the chat, so...
+	printf("\nVlw, flw!\n");
 	close(sockfd);
 
 	// EXIT SUCCESS
