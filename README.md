@@ -2,10 +2,10 @@
 Giovana Daniele<br>
 Luiza Pereira Pinto Machado		7564426<br>
 Marina Fontes Alcântara Machado		10692040<br>
-
-SO: Ubuntu 18.04
-Compilador: GCC 7.5
-
+<br>
+<b>SO</b>: Ubuntu 18.04<br>
+<b>Compilador</b>: GCC 7.5<br>
+<br>
 <h3>Para compilar:</h3>
 	- cliente e servidor
 		make
@@ -13,7 +13,7 @@ Compilador: GCC 7.5
 		make client
 	- servidor
 		make server
-
+<br>
 <h3>Para executar:</h3>
 	!! o servidor deve ser executado antes de qualquer cliente
 	- servidor
