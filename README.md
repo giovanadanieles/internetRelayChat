@@ -7,17 +7,14 @@ Marina Fontes Alcântara Machado		10692040<br>
 <b>Compilador</b>: GCC 7.5<br>
 <br>
 <h3>Para compilar:</h3>
-<ol>
-	<li>cliente e servidor</li><br>
-		make<br>
-	- cliente<br>
-		make client
-	- servidor
-		make server
+<ul>
+	- cliente e servidor: make
+	- cliente: make client
+	- servidor: make server
+<ul>
 <br>
 <h3>Para executar:</h3>
-	!! o servidor deve ser executado antes de qualquer cliente
-	- servidor
-		make run_server
-	- cliente
-		make run_client
+!! o servidor deve ser executado antes de qualquer cliente
+<ul>
+	- servidor: make run_server
+	- cliente: make run_client
