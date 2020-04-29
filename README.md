@@ -7,9 +7,10 @@ Marina Fontes Alcântara Machado		10692040<br>
 <b>Compilador</b>: GCC 7.5<br>
 <br>
 <h3>Para compilar:</h3>
-	- cliente e servidor
-		make
-	- cliente
+<ol>
+	<li>cliente e servidor</li><br>
+		make<br>
+	- cliente<br>
 		make client
 	- servidor
 		make server
