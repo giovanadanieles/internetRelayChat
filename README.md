@@ -11,10 +11,11 @@ Marina Fontes Alcântara Machado		10692040<br>
 	- cliente e servidor: make
 	- cliente: make client
 	- servidor: make server
-<ul>
+</ul>
 <br>
 <h3>Para executar:</h3>
 !! o servidor deve ser executado antes de qualquer cliente
 <ul>
 	- servidor: make run_server
 	- cliente: make run_client
+</ul>
