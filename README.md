@@ -1,3 +1,6 @@
+# internetRelayChat
+Final project of Computer Networks course. 
+
 <h3>Alunas:</h3>
 Giovana Daniele da Silva		10692224<br>
 Luiza Pereira Pinto Machado		7564426<br>
@@ -19,3 +22,4 @@ Marina Fontes Alcântara Machado		10692040<br>
 	<li>servidor: make run_server</li>
 	<li>cliente: make run_client</li>
 </ul>
+

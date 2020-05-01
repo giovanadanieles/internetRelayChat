@@ -1,12 +1,12 @@
 all:
-	gcc -pthread server.c -o server -g -Wall
-	gcc -pthread client.c -o client -g -Wall
+	gcc -Wall -g -pthread server.c -o server
+	gcc -Wall -g -pthread client.c -o client
 
 server: 
-	gcc -pthread server.c -o server -g -Wall
+	gcc -Wall -g -pthread server.c -o server
 
 client:
-	gcc -pthread client.c -o client -g -Wall
+	gcc -Wall -g -pthread client.c -o client
 
 run_server: 
 	./server
