@@ -19,8 +19,9 @@
 #include <signal.h>
 
 #define MAX_CLI 6
-#define BUFFER_SZ 5000
+#define BUFFER_SZ 4097
 #define NICK_LEN 16
+
 #define BUFFER_LEN 2049
 
 // 	Atomic objects are the only objects that are free from data races, 
@@ -30,9 +31,9 @@ static _Atomic unsigned int cliCount = 0;
 static int userID = 0;
 //  leaveFlag indicates whether the client is connected of not or if there's an 
 // Erro, that is, indicates if the client should be disconnected or not.
-static int leaveFlag = 0;	
+//static int leaveFlag = 0;	
 
-char usrColors[MAX_CLI + 1][11] = {" ", "\033[1;31m", "\033[1;32m", "\033[01;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"};
+char usrColors[MAX_CLI + 1][11] = {"\033[1;31m", "\033[1;32m", "\033[01;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"};
 const char defltColor[7] = "\033[0m";
 						
 //  Client structure: stores the address, its socket descriptor, 
@@ -73,6 +74,8 @@ void add_client(Client* cli) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (!clients[i]) {
 			clients[i] = cli;
+			strcpy(clients[i]->color, usrColors[i]);
+
 			break;
 		}
 	}
@@ -84,7 +87,6 @@ void add_client(Client* cli) {
 void remove_client(int userID) {
 	pthread_mutex_lock(&clients_mutex);
 
-	// for (int i = 0; i < cliCount; i++) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (clients[i]) {
 			if (clients[i]->userID == userID) {
@@ -104,8 +106,10 @@ void send_message(char* msg, int userID) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (clients[i]) {
 			if (clients[i]->userID != userID) {
+				sleep(0.7);
+
 				// If the write syscall fails:
-				if (write(clients[i]->sockfd, msg, strlen(msg)) < 0 && leaveFlag == 0) {
+				if (write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
 					printf("!! Erro\n");
 					break;
 				}
@@ -125,20 +129,12 @@ void nick_trim(char* buffer, char* msg) {
 	}
 }
 
-char* getClientColor(char* nick){
-	for(int i = 0; i < MAX_CLI; i++){
-		if(strcmp(nick, clients[i]->nick) == 0) return clients[i]->color;
-	}
-
-	return NULL;
-}
-
 // Handles clients, assigns their values and joins the chat
 void* handle_client(void* arg) {
-	leaveFlag = 0;
+	int leaveFlag = 0;
 	char nick[NICK_LEN] = {};
 	char msg[BUFFER_LEN] = {};
-	char buffer[BUFFER_LEN+NICK_LEN] = {};
+	char buffer[BUFFER_SZ] = {};
 	
 	cliCount++;
 
@@ -148,7 +144,7 @@ void* handle_client(void* arg) {
 	// recv() is used to receive messages from a socket;
 	// Nicknames must be at least 3 characters long 
 	// and should not exceed the maximum length established above.
-	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) >= NICK_LEN - 1) {
+	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) > NICK_LEN - 1) {
 		printf("Erro: nick inválido.\n");
 		leaveFlag = 1;
 	} else {
@@ -161,7 +157,7 @@ void* handle_client(void* arg) {
 
 	}
 
-	memset(buffer, '\0', BUFFER_LEN);
+	memset(buffer, '\0', BUFFER_SZ);
 
 	// Exchange messages
 	while (1) {
@@ -184,26 +180,32 @@ void* handle_client(void* arg) {
 				// Changing the color of the user's nickname
 				int k;
 				char n[NICK_LEN];
+				memset(n, '\0', NICK_LEN);
+
 				for(k = 0; k < NICK_LEN; k++){
 					if(buffer[k] == ':') break;
 					else n[k] = buffer[k];
 				}
 
-				char* color = getClientColor(n);
+				//char* color = getClientColor(n);
 
-				snprintf(buffer, NICK_LEN + BUFFER_LEN, "%s%s%s:%s", color, n, defltColor, msg);
+				snprintf(buffer, strlen(n) + strlen(buffer) + 19, "%s%s%s:%s", cli->color, n, defltColor, msg);
 
 				send_message(buffer, cli->userID);
 				// Prints on the server who sent the message and what were sent
 				printf("%s%s%s", cli->color, buffer, defltColor);
+
+				bzero(buffer, BUFFER_SZ);
 			}
 		} else {
 			printf("Erro.\n");
 			leaveFlag = 1;
 		}
 
-		memset(buffer, '\0', BUFFER_LEN);
+		memset(buffer, '\0', BUFFER_SZ);
 		memset(msg, '\0', BUFFER_LEN);
+
+		sleep(0.7);
 	}
 
 	// The client has left the chat, so...
@@ -327,7 +329,6 @@ int main(int argc, char* const argv[]) {
 		cli->address = client_addr;
 		cli->sockfd = connfd;
 		cli->userID = userID++;
-		strcpy(cli->color, usrColors[userID]);
 
 		// Adding client to the queue
 		add_client(cli);

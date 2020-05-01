@@ -16,7 +16,8 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define BUFFER_LEN 2049
+#define BUFFER_LEN 2049	//	Define where the split'll occur
+#define SIZE_COLORS 19
 #define BUFFER_MAX 4097
 #define NICK_LEN 16
 
@@ -50,11 +51,11 @@ void catch_ctrlC_and_exit() {
 
 // Deals with receiving messages
 void receive_message_handler() {
-	char msg[NICK_LEN+BUFFER_LEN] = {};
+	char msg[NICK_LEN + BUFFER_LEN + SIZE_COLORS] = {};
 
 	// While there are messages to be received
 	while (1) {
-		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN, 0);
+		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN + SIZE_COLORS, 0);
 
 		// If something was written
 		if (rcv > 0) {
@@ -64,7 +65,9 @@ void receive_message_handler() {
 			break;
 		}
 
-		memset(msg, '\0', BUFFER_LEN);
+		memset(msg, '\0', BUFFER_LEN + SIZE_COLORS + NICK_LEN);
+
+		sleep(0.7);
 	}
 }
 
@@ -86,50 +89,60 @@ void lerString(char* buffer) {
 }
 
 // Dealing with sending messages
-void send_message_handler() {
-	char buffer[BUFFER_MAX] = {};
-	char msg[NICK_LEN+BUFFER_LEN] = {};
+void send_message_handler(){	
+  char buffer[BUFFER_MAX] = {};
+  char msg[BUFFER_MAX + NICK_LEN] = {};
+  char sub[BUFFER_MAX] = {};
 
-	// While there's no errors and the chat is running
-	while (!leaveFlag) {		
+  // While there's no errors and the chat is running
+  while(1){
+  	bzero(sub, strlen(sub));
 
-		str_overwrite_stdout();
+    str_overwrite_stdout();
 
-		fgets(buffer, BUFFER_MAX, stdin); // Receives the message
-		str_trim(buffer, strlen(buffer)); // removes \n
+    fgets(buffer, BUFFER_MAX, stdin); // Receives the message
 
-		if (strcmp(buffer, "/quit") == 0) {
-			leaveFlag = 1;
-			break;
-		} else if (strlen(buffer) > BUFFER_LEN) {
-			int j = 0;
-			char sub[BUFFER_LEN] = {};
-			
-			while (j < strlen(buffer)) {
-				int c = 0;
-				while (c < BUFFER_LEN && j < strlen(buffer)) {
-					sub[c] = buffer[j];
-					c++;
-					j++;
-				}
-				
-				str_trim(sub, BUFFER_LEN);
+    if(strcmp(buffer, "/quit\n") == 0){
+    	leaveFlag = 1;
 
-				sprintf(msg, "%s: %s\n", nick, sub);
-				send(sockfd, msg, strlen(msg), 0);
-				
-				memset(sub, '\0', sizeof(sub));
-			}
-		} else {
-			sprintf(msg, "%s: %s\n", nick, buffer);
-			send(sockfd, msg, strlen(msg), 0);
-		}
+    	break;
+    } 
+    
+    int j = 0;
+    int tam = BUFFER_LEN;
 
-		memset(buffer, '\0', BUFFER_LEN);
-		memset(msg, '\0', BUFFER_LEN+NICK_LEN);
-	}
+    if(strlen(buffer) > tam){
+      while(j < strlen(buffer)){
+        int c = 0;
+        while (c < tam && j < strlen(buffer)) {
+          sub[c] = buffer[j];
 
-	catch_ctrlC_and_exit(2);
+          c++; j++;
+        }
+             
+        str_trim(sub, BUFFER_MAX);
+
+      	sprintf(msg, "%s: %s\n", nick, sub);
+      	send(sockfd, msg, strlen(msg), 0);
+
+      	sleep(0.7);
+
+        memset(sub, '\0', BUFFER_LEN);
+        memset(msg, '\0', BUFFER_LEN + NICK_LEN);
+      }  
+    }
+    else{
+      	str_trim(buffer, BUFFER_MAX);
+
+        sprintf(msg, "%s: %s\n", nick,buffer);
+        send(sockfd, msg, strlen(msg), 0);
+    }
+
+    bzero(buffer, BUFFER_MAX);
+    bzero(msg, BUFFER_MAX+NICK_LEN);
+  }
+
+  catch_ctrlC_and_exit();
 }
 
 int main(int argc, char* const argv[]) {
@@ -147,15 +160,24 @@ int main(int argc, char* const argv[]) {
 
 	// Manages client's nickname
 	printf("Qual o seu nick? ");
-	fgets(nick, NICK_LEN, stdin);
+	fgets(nick, NICK_LEN + 2, stdin);
 	str_trim(nick, NICK_LEN);
 
 	// Checks if the given nickname is valid
 	if (strlen(nick) > NICK_LEN - 1 || strlen(nick) < 2) {
-		printf("Digite um nick válido.\n");
+		printf("Digite um nick válido. O nick deve possuir de 2 a 15 caracteres.\n");
 
 		// EXIT FAILURE
 		exit(1);
+	}
+
+	for(int i = 0; i < strlen(nick); i++){
+		if(nick[i] == ':'){
+			printf("Digite um nick válido. O nick não pode possuir o caracter especial ':'.\n");
+
+			// EXIT FAILURE
+			exit(1);
+		}
 	}
 
 	struct sockaddr_in server_addr;
