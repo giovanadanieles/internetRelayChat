@@ -285,7 +285,6 @@ int main(int argc, char* const argv[]) {
 		exit(1);
 	}
 
-
 	// --------------------------------------- The Chatroom ----------------------------------
 	// If there has been no errors so far, the chat server will be available.
 
@@ -323,7 +322,7 @@ int main(int argc, char* const argv[]) {
 			char tmp[70] = {"Opa, sala cheia! Quem sabe na próxima...\nPressione ENTER para sair.\n"};
 			write(connfd, tmp, strlen(tmp));
 			close(connfd);
-			
+
 			continue;
 		}
 
