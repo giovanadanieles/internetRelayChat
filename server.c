@@ -18,18 +18,23 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#define MAX_CLI 10
+#define MAX_CLI 6
 #define BUFFER_SZ 4097
 #define NICK_LEN 16
+
+#define BUFFER_LEN 2049
 
 // 	Atomic objects are the only objects that are free from data races, 
 // that is, they may be modified by two threads concurrently or 
 // modified by one and read by another.
 static _Atomic unsigned int cliCount = 0; 
-static int userID = 10;
+static int userID = 0;
 //  leaveFlag indicates whether the client is connected of not or if there's an 
-// error, that is, indicates if the client should be disconnected or not.
-static int leaveFlag = 0;	
+// Erro, that is, indicates if the client should be disconnected or not.
+//static int leaveFlag = 0;	
+
+char usrColors[MAX_CLI + 1][11] = {"\033[1;31m", "\033[1;32m", "\033[01;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"};
+const char defltColor[7] = "\033[0m";
 						
 //  Client structure: stores the address, its socket descriptor, 
 // the user ID and the nickname; makes client differentiation possible. 
@@ -37,6 +42,7 @@ typedef struct {
 	struct sockaddr_in address;
 	int sockfd;
 	int userID;
+	char color[10];
 	char nick[NICK_LEN];
 } Client;
 
@@ -68,6 +74,8 @@ void add_client(Client* cli) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (!clients[i]) {
 			clients[i] = cli;
+			strcpy(clients[i]->color, usrColors[i]);
+
 			break;
 		}
 	}
@@ -79,7 +87,6 @@ void add_client(Client* cli) {
 void remove_client(int userID) {
 	pthread_mutex_lock(&clients_mutex);
 
-	// for (int i = 0; i < cliCount; i++) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (clients[i]) {
 			if (clients[i]->userID == userID) {
@@ -99,9 +106,11 @@ void send_message(char* msg, int userID) {
 	for (int i = 0; i < MAX_CLI; i++) {
 		if (clients[i]) {
 			if (clients[i]->userID != userID) {
+				sleep(0.7);
+
 				// If the write syscall fails:
-				if (write(clients[i]->sockfd, msg, strlen(msg)) < 0 && leaveFlag == 0) {
-					printf("Error: write to descriptor.\n");
+				if (write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
+					printf("!! Erro\n");
 					break;
 				}
 			}
@@ -111,11 +120,21 @@ void send_message(char* msg, int userID) {
 	pthread_mutex_unlock(&clients_mutex);
 }
 
+void nick_trim(char* buffer, char* msg) {
+	for (int j = 0; j < NICK_LEN; j++) {
+		if (buffer[j] == ':') {
+			strcpy(msg, buffer+j+1);
+			break;
+		}
+	}
+}
+
 // Handles clients, assigns their values and joins the chat
 void* handle_client(void* arg) {
-	leaveFlag = 0;
-	char buffer[BUFFER_SZ];
-	char nick[NICK_LEN];
+	int leaveFlag = 0;
+	char nick[NICK_LEN] = {};
+	char msg[BUFFER_LEN] = {};
+	char buffer[BUFFER_SZ] = {};
 	
 	cliCount++;
 
@@ -125,17 +144,18 @@ void* handle_client(void* arg) {
 	// recv() is used to receive messages from a socket;
 	// Nicknames must be at least 3 characters long 
 	// and should not exceed the maximum length established above.
-	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) >= NICK_LEN - 1) {
-		printf("Error: invalid nickname.\n");
+	if (recv(cli->sockfd, nick, NICK_LEN, 0) <= 0 || strlen(nick) < 2 || strlen(nick) > NICK_LEN - 1) {
+		printf("Erro: nick inválido.\n");
+
 		leaveFlag = 1;
 	} else {
 		strcpy(cli->nick, nick);
 		//  Notifying other clients that this client has joined the chatroom
-		// sprintf() is used to store formatted data as a string
-		sprintf(buffer, "%s has joined!\n", cli->nick);
+		sprintf(buffer, "%s%s entrou!%s\n", cli->color, cli->nick, defltColor);  // sprintf function is used to store formatted data as a string
 		printf("%s", buffer);
 
 		send_message(buffer, cli->userID);
+
 	}
 
 	memset(buffer, '\0', BUFFER_SZ);
@@ -144,29 +164,49 @@ void* handle_client(void* arg) {
 	while (1) {
 		if (leaveFlag) break;
 		
-		int receive = recv(cli->sockfd, buffer, BUFFER_SZ, 0);
+		int receive = recv(cli->sockfd, buffer, NICK_LEN+BUFFER_LEN, 0);
 
-		if (receive > 0) {
-			if (strlen(buffer) > 0) {
-				send_message(buffer, cli->userID);
-				str_trim(buffer, strlen(buffer));
-				// Prints on the server who sent the message to whom
-				printf("%s\n", buffer);	
-			}
-		// Checks if the client wants to leave the chatroom		
-		} else if (receive == 0 || strcmp(buffer, "exit") == 0) {
-			sprintf(buffer, "%s has left.\n", cli->nick);
+		// Checks if the client wants to leave the chatroom	
+		nick_trim(buffer, msg);
+		if (receive == 0 || strcmp(msg, "/quit") == 0) {
+			sprintf(buffer, "%s%s saiu.%s\n", cli->color, cli->nick, defltColor);
 			printf("%s", buffer);
 
 			send_message(buffer, cli->userID);
-
 			leaveFlag = 1;
+		} else if (receive > 0) {
+			if (strlen(buffer) > 0) {
+				str_overwrite_stdout();
+
+				// Changing the color of the user's nickname
+				int k;
+				char n[NICK_LEN];
+				memset(n, '\0', NICK_LEN);
+
+				for(k = 0; k < NICK_LEN; k++){
+					if(buffer[k] == ':') break;
+					else n[k] = buffer[k];
+				}
+
+				//char* color = getClientColor(n);
+
+				snprintf(buffer, strlen(n) + strlen(buffer) + 19, "%s%s%s:%s", cli->color, n, defltColor, msg);
+
+				send_message(buffer, cli->userID);
+				// Prints on the server who sent the message and what were sent
+				printf("%s%s%s", cli->color, buffer, defltColor);
+
+				bzero(buffer, BUFFER_SZ);
+			}
 		} else {
-			printf("Error.\n");
+			printf("Erro.\n");
 			leaveFlag = 1;
 		}
 
 		memset(buffer, '\0', BUFFER_SZ);
+		memset(msg, '\0', BUFFER_LEN);
+
+		sleep(0.7);
 	}
 
 	// The client has left the chat, so...
@@ -182,15 +222,16 @@ void* handle_client(void* arg) {
 
 
 int main(int argc, char* const argv[]) {
-	if(argc != 2) {
-		printf("Error. Try: %s <port>\n", argv[0]);
+	// if(argc != 2) {
+	// 	printf("Erro. Try: %s <port>\n", argv[0]);
 
-		// EXIT FAILURE
-		return 1;
-	}
+	// 	// EXIT FAILURE
+	// 	return 1;
+	// }
 
 	char* IP = "127.0.0.1";
-	int port = atoi(argv[1]);
+	int port = 1234;
+	// int port = atoi(argv[1]);
 
 	int option = 1;
 	int listenfd = 0, connfd = 0;
@@ -217,9 +258,9 @@ int main(int argc, char* const argv[]) {
 	signal(SIGPIPE, SIG_IGN); 
 
 	// This helps in manipulating options for the socket referred by the 
-	// descriptor sockfd; also prevents errors.
+	// descriptor sockfd; also prevents Erros.
 	if (setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char*) &option, sizeof(option)) < 0) {
-		printf("Error: setsockopt.\n");
+		printf("Erro: setsockopt.\n");
 
 		// EXIT FAILURE;
 		exit(1);
@@ -228,7 +269,7 @@ int main(int argc, char* const argv[]) {
 	// After creating the socket, the bind() function binds the socket to the 
 	// address and the port number specified in addr.
 	if (bind(listenfd, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
-		printf("Error: bind.\n");
+		printf("Erro: bind.\n");
 
 		// EXIT FAILURE
 		exit(1);
@@ -237,15 +278,32 @@ int main(int argc, char* const argv[]) {
 	// listen() puts the server socket in a passsive mode, 
 	// where it waits for a client's approach to make a connection
 	if(listen(listenfd, 10) < 0){
-		printf("Error: listen.\n");
+		printf("Erro: listen.\n");
 
 		// EXIT FAILURE
 		exit(1);
 	}
 
 	// -------------------- The Chatroom --------------------
-	// If there has been no error so far, the chat server will be available.
-	printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	// If there has been no Erro so far, the chat server will be available.
+	// printf("======= WELCOME TO KALINKA'S CHATROOM! =======\n");
+	printf("\033[1;32m");
+	printf(" _______  _______  _______  _______         _______  _______  _______  _______ ");
+	printf("\n|  _    ||   _   ||       ||       |       |       ||   _   ||       ||       |");
+	printf("\n| |_|   ||  |_|  ||_     _||    ___| ____  |    _  ||  |_|  ||    _  ||   _   |");
+	printf("\n|       ||       |  |   |  |   |___ |____| |   |_| ||       ||   |_| ||  | |  |");
+	printf("\n|  _   | |       |  |   |  |    ___|       |    ___||       ||    ___||  |_|  |");
+	printf("\n| |_|   ||   _   |  |   |  |   |___        |   |    |   _   ||   |    |       |");
+	printf("\n|_______||__| |__|  |___|  |_______|       |___|    |__| |__||___|    |_______|");
+	printf("\n  ___   _  _______  ___      ___   __    _  ___   _  __   __  _______  ___      ");
+	printf("\n |   | | ||   _   ||   |    |   | |  |  | ||   | | ||  | |  ||       ||   |     ");
+	printf("\n |   |_| ||  |_|  ||   |    |   | |   |_| ||   |_| ||  | |  ||   _   ||   |     ");
+	printf("\n |      _||       ||   |    |   | |       ||      _||  |_|  ||  | |  ||   |     ");
+	printf("\n |     |_ |       ||   |___ |   | |  _    ||     |_ |       ||  |_|  ||   |___  ");
+	printf("\n |    _  ||   _   ||       ||   | | | |   ||    _  ||       ||       ||       | ");
+	printf("\n |___| |_||__| |__||_______||___| |_|  |__||___| |_||_______||_______||_______| \n");
+	printf("\n ______________________________________________________________________________ \n\n\n");
+	printf("\033[0m");
 
 	//  "Infinite loop": responsible for communicating, receiving messages 
 	// from A client and sending them to everyone else.
@@ -258,9 +316,9 @@ int main(int argc, char* const argv[]) {
 
 		//  If the maximum number of clients has not yet been reached, 
 		// the connection is made; otherwise, the client will be disconnected.
-		if (MAX_CLI == (cliCount + 1)) {
-			printf("Connection rejected: chatroom full.\n");
-			//print_ip_addr(cli_addr);
+		if (MAX_CLI < (cliCount + 1)) {
+			char tmp[70] = {"Opa, sala cheia! Quem sabe na próxima...\nPressione ENTER para sair.\n"};
+			write(connfd, tmp, strlen(tmp));
 			close(connfd);
 			continue;
 		}
