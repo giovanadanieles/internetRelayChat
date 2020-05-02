@@ -9,7 +9,7 @@ client:
 	gcc -Wall -g -pthread client.c -o client
 
 run_server: 
-	./server
+	./server || true
 
 run_client:
-	./client
+	./client || true
