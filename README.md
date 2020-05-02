@@ -6,7 +6,6 @@ Giovana Daniele da Silva		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 Luiza Pereira Pinto Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7564426<br>
 Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 
-<br>
 <h3>SO</h3>: Ubuntu 18.04 && Mint 19.3<br>
 <h3>Compilador</h3>: GCC 7.5.0<br>
 
@@ -18,9 +17,9 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 </ul>
 
 <h3>Para executar:</h3>
-<strong>&#x1F534; O servidor deve ser executado antes de qualquer cliente.</strong>
 <ul>
 	<li>servidor: make run_server</li>
 	<li>cliente: make run_client</li>
 </ul>
+<strong>&#x1F534; O servidor deve ser executado antes de qualquer cliente.</strong>
 
