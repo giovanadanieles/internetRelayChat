@@ -23,3 +23,9 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 </ul>
 <strong>&#x1F534; O servidor deve ser executado antes de qualquer cliente.</strong>
 
+<h3>Considerações:</h3>
+<ul>
+	<li>As mensagens foram quebradas em 2048 caracteres, sendo 4096 o tamanho máximo suportado (por conta da limitação do buffer do terminal);</li>
+	<li>Definimos como 6 o número máximo de clientes suportados pelo servidor. Entretanto, como este valor é uma macro, é possível alterá-lo a qualquer momento;</li>
+	<li><strong>A parte 1 do projeto foi finalizada no dia 31/04/2020.</strong></li>
+</ul>
