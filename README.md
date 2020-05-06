@@ -30,3 +30,9 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 	<li>Definimos como 6 o número máximo de clientes suportados pelo servidor. Entretanto, como este valor é uma macro, é possível alterá-lo a qualquer momento;</li>
 	<li><strong>A parte 1 do projeto foi finalizada no dia 31/04/2020.</strong></li>
 </ul>
+
+<h3>Demo:</h3>
+<img src = "images/IRC1.png"><br>
+<img src = "images/IRC2.png"><br>
+<img src = "images/IRC3.png"><br>
+<img src = "images/IRC4.png">
