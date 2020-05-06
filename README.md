@@ -6,7 +6,8 @@ Giovana Daniele da Silva		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 Luiza Pereira Pinto Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7564426<br>
 Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 
-<h3>SO</h3>: Ubuntu 18.04 && Mint 19.3<br>
+<h3>SO</h3>: Ubuntu 18.04<br>
+: Mint 19.3<br>
 <h3>Compilador</h3>: GCC 7.5.0<br>
 
 <h3>Para compilar:</h3>
