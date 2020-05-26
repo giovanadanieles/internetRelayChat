@@ -33,7 +33,7 @@ static int userID = 0;
 char usrColors[MAX_CLI + 1][11] = {"\033[1;31m", "\033[1;32m", "\033[01;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"};
 // Default color is white.
 const char defltColor[7] = "\033[0m";
-						
+
 /*  Client structure: 
  stores the address, its socket descriptor, the user ID and the nickname; 
  makes client differentiation possible. */
@@ -65,6 +65,10 @@ void str_trim(char* arr, int len) {
 		}
 	}
 }
+
+// void catch_ctrl_d_and_exit(int sig, int) {
+// 	connected = 0;
+// }
 
 // Adds clients to the array of clients
 void add_client(Client* cli) {
@@ -99,7 +103,7 @@ void remove_client(int userID) {
 }
 
 // Sends messages to all the clients, except the sernder itself
-void send_message_to_all(char* msg, int userID) {
+void send_message_to_all(char* msg, int userID, int leaveFlag) {
 	pthread_mutex_lock(&clients_mutex);
 
 	for(int i = 0; i < MAX_CLI; i++) {
@@ -108,9 +112,17 @@ void send_message_to_all(char* msg, int userID) {
 				sleep(0.7);
 
 				// If sending message fails:
-				if(write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
+				int counter = 0;
+				while(write(clients[i]->sockfd, msg, strlen(msg)) < 0) {
+					
 					printf("!! Erro\n");
-					break;
+					
+					if (counter == 4) {
+						leaveFlag = 1;
+						break;
+					}
+					
+					counter++;
 				}
 			}
 		}
@@ -167,42 +179,53 @@ void* handle_client(void* arg) {
 		sprintf(buffer, "%s%s entrou!%s\n", cli->color, cli->nick, defltColor);  // sprintf function is used to store formatted data as a string
 		printf("%s", buffer);
 
-		send_message_to_all(buffer, cli->userID);
+		send_message_to_all(buffer, cli->userID, 0);
 	}
 
 	memset(buffer, '\0', BUFFER_MAX);
 
 	// Message exchange
 	while(1) {
+	
 		if(leaveFlag) break;
 		
 		int receive = recv(cli->sockfd, buffer, NICK_LEN+MSG_LEN, 0);
 
 		// Checks if the client wants to leave the chatroom	
 		nick_trim(buffer, msg);
-		if(receive == 0 || strcmp(msg, "/quit") == 0) {
+		if(receive == 0 || strcmp(msg, " /quit\n") == 0 || feof(stdin)) {
+		
 			sprintf(buffer, "%s%s saiu.%s\n", cli->color, cli->nick, defltColor);
 			printf("%s", buffer);
-
-			send_message_to_all(buffer, cli->userID);
+			send_message_to_all(buffer, cli->userID, 0);
 			leaveFlag = 1;
+		
+		} else if(strcmp(msg, " /ping\n") == 0) {
+
+			printf("pong\n");
+			send_message_to_all("pong\n", cli->userID, 0);
+
 		} else if(receive > 0) {
+			
 			if(strlen(buffer) > 0) {
 				str_overwrite_stdout();
 
 				char n[NICK_LEN];
 				change_color(buffer, n);
-				snprintf(buffer, strlen(n) + strlen(buffer) + 19, "%s%s%s:%s", cli->color, n, defltColor, msg);
+				snprintf(buffer, strlen(n)+strlen(buffer)+19, "%s%s%s:%s", cli->color, n, defltColor, msg);
 				
-				send_message_to_all(buffer, cli->userID);
+				send_message_to_all(buffer, cli->userID, 0);
 
 				printf("%s%s%s", cli->color, buffer, defltColor);
 
 				bzero(buffer, BUFFER_MAX);
 			}
+		
 		} else {
+	
 			printf("Erro.\n");
 			leaveFlag = 1;
+	
 		}
 
 		memset(buffer, '\0', BUFFER_MAX);
@@ -239,6 +262,8 @@ int main(int argc, char* const argv[]) {
 	int listenfd = 0, connfd = 0;
 	struct sockaddr_in server_addr, client_addr;
 	pthread_t tid;
+
+	// signal(EOF, catch_ctrl_d_and_exit);
 
 	/* -------------------------- Socket settings --------------------------
 
@@ -306,10 +331,12 @@ int main(int argc, char* const argv[]) {
 	printf("\n ______________________________________________________________________________ \n\n\n");
 	printf("\033[0m");
 
-
 	/*  "Infinite loop": responsible for communicating, receiving messages 
 	 from a client and sending them to everyone else. */
+	// int connected = 1;
+	// while(connected) {
 	while(1) {
+
 		socklen_t cliLen = sizeof(client_addr);
 		/* Responsible for extracting the first connection request on the 
 		 queue of pending connections, creating a new connected socket 
@@ -340,6 +367,8 @@ int main(int argc, char* const argv[]) {
 
 		// Reducing CPU usage
 		sleep(1);
+
+		// catch_ctrl_d_and_exit(2);
 	}
 
 	// EXIT SUCCESS

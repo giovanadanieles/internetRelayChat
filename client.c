@@ -45,7 +45,7 @@ void str_trim(char* arr, int len) {
 }
 
 // Checks if the client wants to exit the program
-void catch_ctrl_c_and_exit(int sig) {
+void catch_ctrl_d_and_exit(int sig) {
 	leaveFlag = 1;
 }
 
@@ -107,7 +107,7 @@ void send_message_handler() {
 
 		fgets(buffer, BUFFER_MAX, stdin); // Receives the message
 
-		if(strcmp(buffer, "/quit\n") == 0) {
+		if(strcmp(buffer, "/quit\n") == 0 || feof(stdin)) {
 			leaveFlag = 1;
 			break;
 		} else if(strlen(buffer) > BUFFER_LEN) {
@@ -122,7 +122,7 @@ void send_message_handler() {
 		bzero(msg, BUFFER_MAX+NICK_LEN);
 	}
 
-	catch_ctrl_c_and_exit(2);
+	catch_ctrl_d_and_exit(2);
 }
 
 void input_nickname() {
@@ -159,7 +159,10 @@ int main(int argc, char* const argv[]) {
 	int port = 1234;
 	// int port = atoi(argv[1]);
 
-	signal(SIGINT, catch_ctrl_c_and_exit);
+	// Ignores CTRL+C
+	signal(SIGINT, SIG_IGN);
+	// Sets CTRL+D to /quit
+	signal(EOF, catch_ctrl_d_and_exit);
 
 	input_nickname();
 
@@ -178,19 +181,32 @@ int main(int argc, char* const argv[]) {
 
 	// -------------------- Connecting Client to Server --------------------
 
+	printf("Para entrar na sala, digite \"/connect\"!\n");
+	char tmp[BUFFER_MAX];
+	while(1) {
+		fgets(tmp, BUFFER_MAX, stdin);
+		if(strcmp(tmp, "/connect\n") == 0) break;
+		else if (strcmp(tmp, "/quit\n") == 0) {
+			printf("Tchauzinho!\n");
+			exit(1);
+		} else {
+			printf("Opa, você digitou um comando inválido!\n");
+			exit(1);
+		}
+	}
+
 	/* Used to create a connection to the specified foreign association. 
 	 The parameters specify an unconnected datagram or stream socket. */
+	
 	int err = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 	if(err == -1) {
 		printf("Erro: connect.\n");
-
 		// EXIT FAILURE
 		exit(1);
 	}
 
 	// Sending the nickname to the server
 	send(sockfd, nick, NICK_LEN, 0);
-
 
 	// --------------------------------------- The Chatroom --------------------------------------
 	//  If there has been no error so far, the client is now connected to the chat
