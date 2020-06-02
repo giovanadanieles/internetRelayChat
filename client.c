@@ -23,7 +23,7 @@
 
 /* The value of a volative variable may change at any time,
  without any action being taken by the code the compiler finds nearby. */
-volatile sig_atomic_t leaveFlag = 0;	
+volatile sig_atomic_t leaveFlag = 0;
 
 int sockfd = 0;
 char nick[NICK_LEN];
@@ -83,7 +83,7 @@ void split_message(char *buffer, char *msg) {
         	sub[c] = buffer[j];
       		c++; j++;
     	}
-	         
+
 	    str_trim(sub, BUFFER_MAX);
 
 	  	sprintf(msg, "%s: %s\n", nick, sub);
@@ -97,7 +97,7 @@ void split_message(char *buffer, char *msg) {
 }
 
 // Dealing with sending messages
-void send_message_handler() {	
+void send_message_handler() {
 	char buffer[BUFFER_MAX] = {};
 	char msg[BUFFER_MAX+NICK_LEN] = {};
 
@@ -132,7 +132,7 @@ void input_nickname() {
 
 	// Checks if the given nickname is valid
 	if(strlen(nick) > NICK_LEN - 1 || strlen(nick) < 2) {
-		printf("Digite um nick válido.\nO nick deve possuir de 2 a 15 caracteres.\n");
+		printf("\nDigite um nick válido.\nO nick deve possuir de 2 a 15 caracteres.\n");
 
 		// EXIT FAILURE
 		exit(1);
@@ -140,7 +140,7 @@ void input_nickname() {
 
 	for(int i = 0; i < strlen(nick); i++) {
 		if(nick[i] == ':') {
-			printf("Digite um nick válido.\nO nick não pode possuir o caracter especial ':'.\n");
+			printf("\nDigite um nick válido.\nO nick não pode possuir o caracter especial ':'.\n");
 
 			// EXIT FAILURE
 			exit(1);
@@ -168,39 +168,39 @@ int main(int argc, char* const argv[]) {
 
 	struct sockaddr_in server_addr;
 
-	/*  AF_INET is an address family that designates IPv4 as the address' 
+	/*  AF_INET is an address family that designates IPv4 as the address'
 	 type that the socket can communicate;
 	  SOCK_STREAM defines the communication type - in this case, TCP
 	  The third argument defines the protocol value for IP. */
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-	// IP and port bind and a connection will open based on both	
+	// IP and port bind and a connection will open based on both
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = inet_addr(IP);
 	server_addr.sin_port = htons(port);
 
 	// -------------------- Connecting Client to Server --------------------
 
-	printf("Para entrar na sala, digite \"/connect\"!\n");
+	printf("\nPara entrar na sala, digite \"/connect\"!\n");
 	char tmp[BUFFER_MAX];
 	while(1) {
 		fgets(tmp, BUFFER_MAX, stdin);
 		if(strcmp(tmp, "/connect\n") == 0) break;
 		else if (strcmp(tmp, "/quit\n") == 0) {
-			printf("Tchauzinho!\n");
+			printf("\nTchauzinho!\n");
 			exit(1);
 		} else {
-			printf("Opa, você digitou um comando inválido!\n");
+			printf("\nOpa, você digitou um comando inválido!\n");
 			exit(1);
 		}
 	}
 
-	/* Used to create a connection to the specified foreign association. 
+	/* Used to create a connection to the specified foreign association.
 	 The parameters specify an unconnected datagram or stream socket. */
-	
+
 	int err = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 	if(err == -1) {
-		printf("Erro: connect.\n");
+		printf("\nErro: connect.\n");
 		// EXIT FAILURE
 		exit(1);
 	}
@@ -233,7 +233,7 @@ int main(int argc, char* const argv[]) {
 	pthread_t sendMsgThread;
 
 	if(pthread_create(&sendMsgThread, NULL, (void*) send_message_handler, NULL) != 0) {
-		printf("Erro: pthread.\n");
+		printf("\nErro: pthread.\n");
 
 		// EXIT FAILURE
 		exit(1);
@@ -242,7 +242,7 @@ int main(int argc, char* const argv[]) {
 	pthread_t receiveMsgThread;
 
 	if(pthread_create(&receiveMsgThread, NULL, (void*) receive_message_handler, NULL) != 0) {
-		printf("Erro: pthread.\n");
+		printf("\nErro: pthread.\n");
 
 		// EXIT FAILURE
 		exit(1);
