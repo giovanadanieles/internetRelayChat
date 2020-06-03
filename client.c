@@ -99,18 +99,18 @@ void split_message(char *buffer, char *msg) {
 // Dealing with sending messages
 void send_message_handler() {
 	char buffer[BUFFER_MAX] = {};
-	char msg[BUFFER_MAX+NICK_LEN] = {};
+	char msg[BUFFER_MAX+NICK_LEN+5] = {};
 
 	// While there's no errors and the chat is running
-	while(1) {
+	while (1) {
 		str_overwrite_stdout();
 
 		fgets(buffer, BUFFER_MAX, stdin); // Receives the message
 
-		if(strcmp(buffer, "/quit\n") == 0 || feof(stdin)) {
+		if (strcmp(buffer, "/quit\n") == 0 || feof(stdin)) {
 			leaveFlag = 1;
 			break;
-		} else if(strlen(buffer) > BUFFER_LEN) {
+		} else if (strlen(buffer) > BUFFER_LEN) {
 			split_message(buffer, msg);
 		} else {
 		  	str_trim(buffer, BUFFER_MAX);
