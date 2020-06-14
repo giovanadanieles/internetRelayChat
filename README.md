@@ -28,7 +28,8 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 <ul>
 	<li>As mensagens foram quebradas em 2048 caracteres, sendo 4096 o tamanho máximo suportado (por conta da limitação do buffer do terminal);</li>
 	<li>Definimos como 6 o número máximo de clientes suportados pelo servidor. Entretanto, como este valor é uma macro, é possível alterá-lo a qualquer momento;</li>
-	<li><strong>A parte 1 do projeto foi finalizada no dia 31/04/2020.</strong></li>
+	<li>O "pong" só é retonardo ao usuário que enviou o "/ping", assim como o "/ping" não é exibido para os demais usuários;</li>
+	<li><strong>A parte 1 do projeto foi finalizada no dia 31/04/2020;</strong></li>
 	<li><strong>A parte 2 do projeto foi finalizada no dia 02/06/2020.</strong></li>
 </ul>
 
