@@ -227,7 +227,6 @@ void* handle_client(void* arg) {
 				channel_id++;
 			}		
 		}
-		// send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 	}
 
 	memset(buffer, '\0', BUFFER_MAX);
@@ -367,18 +366,101 @@ void* handle_client(void* arg) {
 				write(cli->sockfd, buffer, strlen(buffer));
 			}
 
+		} else if(strncmp(msg, " /mute", 6) == 0) {
+
+			if(cli->isAdmin) {
+				get_substring(nick, msg, 7, NICK_LEN);
+				str_trim(nick, NICK_LEN);
+
+				int clientFound = 0;
+
+				for (int i = 0; i < MAX_CLI; i++) {
+
+					if (strcmp(nick, clients[i]->nick) == 0) {
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "Shh, cala boquinha.\n");
+						write(clients[i]->sockfd, buffer, strlen(buffer));
+
+						clients[i]->isMuted = 1;
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "%s foi silenciadah!\n", nick);
+						printf("%s", buffer);
+						write(cli->sockfd, buffer, strlen(buffer));
+						
+						clientFound = 1;
+						break;
+					}
+				}
+
+				if (!clientFound) {
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
+					write(cli->sockfd, buffer, strlen(buffer));
+				}
+			} else {
+				memset(buffer, '\0', BUFFER_MAX);
+				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nSe quer mutar geral, cria seu próprio canal!\n");
+				write(cli->sockfd, buffer, strlen(buffer));
+			}
+
+		} else if(strncmp(msg, " /unmute", 8) == 0) {
+
+			if(cli->isAdmin) {
+				get_substring(nick, msg, 9, NICK_LEN);
+				str_trim(nick, NICK_LEN);
+
+				int clientFound = 0;
+
+				for (int i = 0; i < MAX_CLI; i++) {
+
+					if (strcmp(nick, clients[i]->nick) == 0) {
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "Tá, pode falar.\n");
+						write(clients[i]->sockfd, buffer, strlen(buffer));
+
+						clients[i]->isMuted = 0;
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "%s foi liberadah!\n", nick);
+						printf("%s", buffer);
+						write(cli->sockfd, buffer, strlen(buffer));
+						
+						clientFound = 1;
+						break;
+					}
+				}
+
+				if (!clientFound) {
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
+					write(cli->sockfd, buffer, strlen(buffer));
+				}
+			} else {
+				memset(buffer, '\0', BUFFER_MAX);
+				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nPode sair desmutando assim não!\n");
+				write(cli->sockfd, buffer, strlen(buffer));
+			}
+
 		} else if(receive > 0) {
 
 			if(strlen(buffer) > 0) {
-				str_overwrite_stdout();
+				// str_overwrite_stdout();
 
 				char n[NICK_LEN];
 				change_color(buffer, n);
 				snprintf(buffer, strlen(n)+strlen(buffer)+19, "%s%s%s:%s", cli->color, n, defltColor, msg);
 
-				send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+				printf("mutado: %d\n", cli->isMuted);
+				if (cli->isMuted == 0)
+					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+				else {
+					printf("mutadah\n");
+				}
 
-				printf("%s%s%s", cli->color, buffer, defltColor);
+				// printf("%s%s%s", cli->color, buffer, defltColor);
 
 				bzero(buffer, BUFFER_MAX);
 			}
@@ -523,6 +605,7 @@ int main(int argc, char* const argv[]) {
 		cli->sockfd = connfd;
 		cli->userID = userID++;
 		strcpy(cli->channel, channel_list[0]);
+		cli->isMuted = 0;
 
 		add_client(cli);
 		// Starts a new thread in the calling process

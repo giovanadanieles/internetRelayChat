@@ -65,7 +65,6 @@ void receive_message_handler() {
 
 		// If something was written
 		if (strcmp(msg, "/kicked") == 0) {
-			printf("ENTROU\n");
 			leaveFlag = 1;
 		} else if(rcv > 0) {
 			printf("%s", msg);
