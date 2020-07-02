@@ -18,7 +18,7 @@
 
 #define BUFFER_LEN 2049	//	Define where the split will occur
 #define BUFFER_MAX 4097
-#define NICK_LEN 16
+#define NICK_LEN 50
 #define SIZE_COLORS 19
 
 /* The value of a volative variable may change at any time,
@@ -44,6 +44,12 @@ void str_trim(char* arr, int len) {
 	}
 }
 
+void get_substring(char* sub, char* msg, int commandLen, int maxLen) {
+	for (int i = commandLen; i <= commandLen+maxLen; i++) {
+		sub[i-commandLen] = msg[i];
+	}
+}
+
 // Checks if the client wants to exit the program
 void catch_ctrl_d_and_exit(int sig) {
 	leaveFlag = 1;
@@ -58,7 +64,9 @@ void receive_message_handler() {
 		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN+SIZE_COLORS, 0);
 
 		// If something was written
-		if(rcv > 0) {
+		if (strcmp(msg, "/kicked") == 0) {
+			leaveFlag = 1;
+		} else if(rcv > 0) {
 			printf("%s", msg);
 			str_overwrite_stdout();
 		} else if(rcv == 0) {	// An error occurred
@@ -110,6 +118,24 @@ void send_message_handler() {
 		if (strcmp(buffer, "/quit\n") == 0 || feof(stdin)) {
 			leaveFlag = 1;
 			break;
+		} else if(strncmp(buffer, "/nickname", 9) == 0) {
+			char newNick[NICK_LEN];
+			
+			memset(newNick, '\0', NICK_LEN);
+
+			get_substring(newNick, buffer, 10, NICK_LEN);
+		  	str_trim(newNick, NICK_LEN);
+
+			if(strlen(newNick) < 2 || strlen(newNick) > NICK_LEN - 1) {
+				printf("\nErro: nick inválido.\n");
+			} else {
+				strcpy(nick, newNick);
+				
+		  		str_trim(buffer, BUFFER_MAX);
+		    	sprintf(msg, "%s: %s\n", nick, buffer);
+				send(sockfd, msg, strlen(msg), 0);
+			}
+
 		} else if (strlen(buffer) > BUFFER_LEN) {
 			split_message(buffer, msg);
 		} else {
@@ -248,7 +274,7 @@ int main(int argc, char* const argv[]) {
 		exit(1);
 	}
 
-	// Making the chat active and finalizing when it's the properly moment
+	// Making the chat active and finalizing when it's the proper moment
 	while(1) {
 		if(leaveFlag) {
 			break;
