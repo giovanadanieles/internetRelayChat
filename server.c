@@ -132,7 +132,7 @@ void send_message_to_channel(char* msg, int userID, char* channel, int leaveFlag
 		return;
 
 	for (int i = 0; i < MAX_CLI; i++) {
-		
+
 		if (clients[i]) {
 			if (clients[i]->userID != userID && strcmp(clients[i]->channel, channel) == 0) {
 				sleep(0.7);
@@ -142,7 +142,7 @@ void send_message_to_channel(char* msg, int userID, char* channel, int leaveFlag
 
 					if (counter == 4) {
 						printf("Erro: a mensagem não pode ser enviada.\n");
-						
+
 						pthread_mutex_unlock(&clients_mutex);
 						remove_client(i);
 						pthread_mutex_lock(&clients_mutex);
@@ -196,10 +196,10 @@ int check_channel(char *channel){
 
 int check_nick(char *nick, char*channel){
 
-	for (int i = 0; i < MAX_CLI; i++) 
+	for (int i = 0; i < MAX_CLI; i++)
 		if (clients[i] && strcmp(channel, clients[i]->channel) ==0 && strcmp(nick, clients[i]->nick) == 0)
 			return 0;
-	
+
 	return 1;
 
 }
@@ -229,19 +229,19 @@ void* handle_client(void* arg) {
 
 		printf("\nErro: nick inválido.\n");
 		leaveFlag = 1;
-	
+
 	} else {
-	
+
 		strcpy(cli->nick, nick);
 		//  Notifies other clients that this client has joined the chatroom
 		sprintf(buffer, "%s%s entrou no servidor!%s\n", cli->color, cli->nick, defltColor);
 		printf("%s", buffer);
 
 		memset(buffer, '\0', BUFFER_MAX);
-		strcpy(buffer, "Para entrar em um canal apenas digitar \"/join\" espaço nome do canal a sua escolha!\n\nPode entrar em um dos canais já criados ou criar um novo (lembrando que que o nome do canal deve começar com '#'ou '&'e não pode conter ',' ou ' ' ou ASCII7)\n\n");
+		strcpy(buffer, "Para entrar em um canal basta digitar \"/join nome_do_canal\"!\n\nVocê pode entrar em um dos canais já existentes ou criar o seu próprio crinal (lembrando que que o nome do canal deve começar com '#'ou '&'e não pode conter ',' ou ' ' ou ASCII7)\n\n");
 		write(cli->sockfd, buffer, strlen(buffer));
 		int channel_id = 0;
-		
+
 		strcpy(menuChannel,"Lista de canais:\n");
 
 		for(int i = 0; i < CHANNEL_NUM; i++) {
@@ -251,8 +251,9 @@ void* handle_client(void* arg) {
 				sprintf(buffer, "\t%d - %s\n", channel_id, channel_list[i]);
 				strcat(menuChannel,buffer);
 				channel_id++;
-			}		
+			}
 		}
+		printf("\n\n");
 
 		write(cli->sockfd, menuChannel, strlen(menuChannel));
 	}
@@ -277,25 +278,29 @@ void* handle_client(void* arg) {
 
 		} else if(strncmp(msg, " /join", 6) == 0) {
 
-			
+
 			get_substring(channel, msg, 7, CHANNEL_LEN);
 			str_trim(channel, strlen(channel));
 
 
 			if(!check_channel(channel) || !check_nick(cli->nick,channel)){
-
 				memset(buffer, '\0', BUFFER_MAX);
-				if(!check_channel(channel))
-					sprintf(buffer, "Insira um nome de canal válido!\n");
-				else
-					sprintf(buffer, "Já existe %s nesse chat, para entrar mude seu nick! Comando: \"/nickname\" espaço novo nick!\n", cli->nick);
 
-					write(cli->sockfd, buffer, strlen(buffer));
+				if(!check_channel(channel)){
+					sprintf(buffer, "\nInsira um nome de canal válido!\n\n");
+				}
+				else if(strcmp(cli->channel,channel) == 0)
+					sprintf(buffer, "\nVocê já está neste canal!\n\n"); 
+				else{
+					sprintf(buffer, "\nJá existe um usuário com nickname %s nesse chat, para entrar mude seu nick com o comando: \"/nickname novo_nick\"!\n\n", cli->nick);
+				}
+
+				write(cli->sockfd, buffer, strlen(buffer));
 
 			}else{
 
 				if (strcmp(cli->channel, channel_list[0]) != 0) {
-				sprintf(buffer, "Nada de ficar mudando de sala! Sem bagunça no KalinkUOL!\n");
+				sprintf(buffer, "\nNada de ficar mudando de sala! Sem bagunça no KalinkUOL! Saia do servidor e entre novamente para poder se juntar a um outro canal.\n");
 				write(cli->sockfd, buffer, strlen(buffer));
 				} else {
 					strcpy(cli->channel, channel);
@@ -310,7 +315,7 @@ void* handle_client(void* arg) {
 							newChannel = 0;
 							cli->isAdmin = 0;
 							memset(buffer, '\0', BUFFER_MAX);
-							sprintf(buffer, "Bem-vindo ao canal %s, vulgo melhor canal!\n",channel);
+							sprintf(buffer, "\nBem-vindo ao canal %s, vulgo melhor canal!\n",channel);
 							write(cli->sockfd, buffer, strlen(buffer));
 							break;
 						}
@@ -324,17 +329,17 @@ void* handle_client(void* arg) {
 									strcpy(channel_list[i], channel);
 									cli->isAdmin = 1;
 									memset(buffer, '\0', BUFFER_MAX);
-									sprintf(buffer, "Bem-vindo ao canal %s, você é o Admin, lembre com grandes poderes vêm grandes responsabilidades!\n",channel);
+									sprintf(buffer, "\nBem-vindo ao canal %s. Você é o Admin! Lembre-se: com grandes poderes vêm grandes responsabilidades!\n",channel);
 									write(cli->sockfd, buffer, strlen(buffer));
 									break;
 								}
 							}
 						} else if (channelAvailable == 0) {
 							memset(buffer, '\0', BUFFER_MAX);
-							sprintf(buffer, "Não há espaço para novos canais!\n");
+							sprintf(buffer, "\nNão há espaço para novos canais!\n");
 							strcpy(cli->channel,channel_list[0]);
 							write(cli->sockfd, buffer, strlen(buffer));
-						}	
+						}
 					}
 
 					//  Notifies other clients that this client has joined the channel
@@ -348,9 +353,9 @@ void* handle_client(void* arg) {
 
 			char reply[5] = "pong\n";
 			write(cli->sockfd, reply, strlen(reply));
-		
+
 		} else if(strncmp(msg, " /nickname", 10) == 0) {
-			
+
 			memset(nick, '\0', NICK_LEN);
 			get_substring(nick, msg, 11, NICK_LEN);
 		  	str_trim(nick, NICK_LEN);
@@ -361,7 +366,7 @@ void* handle_client(void* arg) {
 			send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
 			strcpy(cli->nick, nick);
-			
+
 			memset(buffer, '\0', BUFFER_MAX);
 			sprintf(buffer, "Nick alterado para %s!\n", cli->nick);
 			write(cli->sockfd, buffer, strlen(buffer));
@@ -382,7 +387,7 @@ void* handle_client(void* arg) {
 						memset(buffer, '\0', BUFFER_MAX);
 						sprintf(buffer, "Você foi eliminado da casa do Big Kalinka Brasil.\n");
 						write(clients[i]->sockfd, buffer, strlen(buffer));
-				
+
 						sleep(0.7);
 
 						memset(buffer, '\0', BUFFER_MAX);
@@ -398,7 +403,7 @@ void* handle_client(void* arg) {
 						sprintf(buffer, "%s não está mais espalhando seu fedor no canal!\n", nick);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -438,7 +443,7 @@ void* handle_client(void* arg) {
 						sprintf(buffer, "%s foi silenciadah!\n", nick);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -449,7 +454,7 @@ void* handle_client(void* arg) {
 					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
 					write(cli->sockfd, buffer, strlen(buffer));
 				}
-			} 
+			}
 			else {
 				memset(buffer, '\0', BUFFER_MAX);
 				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nSe quer mutar geral, cria seu próprio canal!\n");
@@ -478,7 +483,7 @@ void* handle_client(void* arg) {
 						sprintf(buffer, "%s foi liberadah!\n", nick);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -506,21 +511,21 @@ void* handle_client(void* arg) {
 				for (int i = 0; i < MAX_CLI; i++) {
 
 					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
-			
+
 						memset(buffer, '\0', BUFFER_MAX);
 						sprintf(buffer, "O endereço de IP de %s é %s\n",clients[i]->nick,inet_ntoa(clients[i]->address.sin_addr));
-						write(cli->sockfd, buffer, strlen(buffer));	
+						write(cli->sockfd, buffer, strlen(buffer));
 						clientFound = 1;
 						break;
 					}
 				}
 
 				if (!clientFound) {
-					
+
 					memset(buffer, '\0', BUFFER_MAX);
 					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
 					write(cli->sockfd, buffer, strlen(buffer));
-				} 
+				}
 
 			}else {
 				memset(buffer, '\0', BUFFER_MAX);
@@ -540,7 +545,7 @@ void* handle_client(void* arg) {
 
 				if (cli->isMuted == 0)
 					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
-			
+
 
 				// printf("%s%s%s", cli->color, buffer, defltColor);
 
@@ -589,7 +594,7 @@ int main(int argc, char* const argv[]) {
 	for (int i = 0; i < 10; i++) {
 		memset(channel_list[i], '\0', CHANNEL_LEN);
 	}
-	strcpy(channel_list[0], "default");
+	strcpy(channel_list[0], "&default");
 
 	/* -------------------------- Socket settings --------------------------
 
