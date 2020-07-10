@@ -33,8 +33,10 @@ static int userID = 0;
 
 // Colors used in users nicknames: red, green, yellow, blue, magenta and cyan.
 char usrColors[MAX_CLI + 1][11] = {"\033[1;31m", "\033[1;32m", "\033[01;33m", "\033[1;34m", "\033[1;35m", "\033[1;36m"};
+
 // Default color is white.
 const char defltColor[7] = "\033[0m";
+const char serverMsgColor[10] = "\033[1;32m";
 
 /*  Client structure:
  stores the address, its socket descriptor, the user ID and the nickname;
@@ -53,7 +55,7 @@ typedef struct {
 
 Client* clients[MAX_CLI];
 
-/* OBSERVAÇÃOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+/*
 	Channels names are strings (beginning with a '&' or '#' character) of
    length up to 200 characters.  Apart from the the requirement that the
    first character being either '&' or '#'; the only restriction on a
@@ -61,7 +63,15 @@ Client* clients[MAX_CLI];
    (^G or ASCII 7), or a comma (',' which is used as a list item
    separator by the protocol).
 */
-char channel_list[CHANNEL_NUM][CHANNEL_LEN];
+
+typedef struct {
+	char chName[CHANNEL_LEN];
+	char chMode[3];
+	char inviteUser[MAX_CLI][NICK_LEN];
+	int nroInvUser;
+} Channel;
+
+Channel channel_list[CHANNEL_NUM];
 
 // Necessary to send messages between the clients
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -129,8 +139,11 @@ void send_message_to_channel(char* msg, int userID, char* channel, int leaveFlag
 		clients[1] = cli;
 	}
 
+	// if(strcmp(channel,channel_list[0].chName) == 0)
+	// 	return;
+
 	for (int i = 0; i < MAX_CLI; i++) {
-		
+
 		if (clients[i]) {
 			if (clients[i]->userID != userID && strcmp(clients[i]->channel, channel) == 0) {
 				sleep(0.7);
@@ -140,7 +153,7 @@ void send_message_to_channel(char* msg, int userID, char* channel, int leaveFlag
 
 					if (counter == 4) {
 						printf("Erro: a mensagem não pode ser enviada.\n");
-						
+
 						pthread_mutex_unlock(&clients_mutex);
 						remove_client(i);
 						pthread_mutex_lock(&clients_mutex);
@@ -183,6 +196,27 @@ void get_substring(char* sub, char* msg, int commandLen, int maxLen) {
 	}
 }
 
+// Checks whether the channel name is valid.
+int check_channel(char *channel){
+
+	if(channel[0] != '&' && channel[0] != '#') return 0;
+
+	for (int i = 0; i<CHANNEL_LEN; i++)
+		if(channel[i] == ' ' || channel[i] == ',' || channel[i] == (char)7) return 0;
+	return 1;
+}
+
+// Checks if there is already a user with the specified nickname on the specified channel.
+int check_nick(char *nick, char*channel){
+
+	for (int i = 0; i < MAX_CLI; i++)
+		if (clients[i] && strcmp(channel, clients[i]->channel) == 0 && strcmp(nick, clients[i]->nick) == 0)
+			return 0;
+
+	return 1;
+
+}
+
 // Handles clients, assigns their values and joins the chat
 void* handle_client(void* arg) {
 	/* leaveFlag indicates whether the client is connected or if they wish
@@ -191,9 +225,11 @@ void* handle_client(void* arg) {
 	int leaveFlag = 0;
 
 	char buffer[BUFFER_MAX] = {};
+	char menuChannel[BUFFER_MAX] = {};
 	char nick[NICK_LEN] = {};
 	char msg[MSG_LEN] = {};
 	char channel[200] = {};
+	char mode[3] = {};
 
 	cliCount++;
 
@@ -207,26 +243,38 @@ void* handle_client(void* arg) {
 
 		printf("\nErro: nick inválido.\n");
 		leaveFlag = 1;
-	
+
 	} else {
-	
+
 		strcpy(cli->nick, nick);
 		//  Notifies other clients that this client has joined the chatroom
-		sprintf(buffer, "%s%s entrou no servidor!%s\n", cli->color, cli->nick, defltColor);
+		sprintf(buffer, "%s%s entrou no servidor!%s", cli->color, cli->nick, defltColor);
 		printf("%s", buffer);
 
+		memset(buffer, '\0', BUFFER_MAX);
+		strcpy(buffer, "> Para entrar em um canal basta digitar \"/join nome_do_canal\"!\n\n> Você pode entrar em um dos canais já existentes ou criar o seu próprio crinal (lembrando que que o nome do canal deve começar com '#'ou '&'e não pode conter ',' ou ' ' ou ASCII7)\n\n");
+		write(cli->sockfd, buffer, strlen(buffer));
 		int channel_id = 0;
+
+		strcpy(menuChannel,"Lista de canais:\n");
+
 		for(int i = 0; i < CHANNEL_NUM; i++) {
 
 			memset(buffer, '\0', BUFFER_MAX);
-			if(channel_list[i][0] != '\0') {
-				sprintf(buffer, "%d - %s\n", channel_id, channel_list[i]);
-				// printf("%s", buffer);
-				write(cli->sockfd, buffer, strlen(buffer));
+			if(channel_list[i].chName[0] != '\0') {
+				if(channel_list[i].chMode[0] == '\0')
+					sprintf(buffer, "\t%d - %s\n", channel_id, channel_list[i].chName);
+				else
+					sprintf(buffer, "\t%d - %s (invite-only)\n", channel_id, channel_list[i].chName);
 
+				strcat(menuChannel,buffer);
 				channel_id++;
-			}		
+			}
 		}
+		sprintf(buffer, "%s\n", buffer);
+		strcat(menuChannel, buffer);
+
+		write(cli->sockfd, menuChannel, strlen(menuChannel));
 	}
 
 	memset(buffer, '\0', BUFFER_MAX);
@@ -238,83 +286,243 @@ void* handle_client(void* arg) {
 
 		int receive = recv(cli->sockfd, buffer, NICK_LEN+MSG_LEN, 0);
 
-		// Checks if the client wants to leave the chatroom
 		nick_trim(buffer, msg);
+
+		// Checks if the client wants to leave the chatroom
 		if(receive == 0 || strcmp(msg, " /quit\n") == 0 || feof(stdin)) {
 
-			sprintf(buffer, "%s%s saiu do servidor.%s\n", cli->color, cli->nick, defltColor);
+			sprintf(buffer, "%s%s saiu do servidor.%s\n", serverMsgColor, cli->nick, defltColor);
 			printf("%s", buffer);
 			send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 			leaveFlag = 1;
 
-		} else if(strncmp(msg, " /join", 6) == 0) {
-			
-			get_substring(channel, msg, 7, CHANNEL_LEN);
-			str_trim(channel, strlen(channel));
+		} else if(strcmp(msg, " /quitChannel\n") == 0) {
 
-			if (strcmp(cli->channel, channel_list[0]) != 0) {
-				sprintf(buffer, "Nada de ficar mudando de sala! Sem bagunça no KalinkUOL!\n");
-				write(cli->sockfd, buffer, strlen(buffer));
-			} else {
-				strcpy(cli->channel, channel);
-
-				// Checks if channel requested already exists
-				int newChannel = 1;
-				int channelAvailable = 0;
-				for (int i = 0; i < CHANNEL_NUM; i++) {
-					if (channel_list[i][0] == '\0') {
-						channelAvailable++;
-					} else if (strcmp(channel, channel_list[i]) == 0) {
-						newChannel = 0;
-						cli->isAdmin = 0;
-						break;
+			if (cli->isAdmin) {
+				
+				int otherClients = 0;
+				for (int i = 0; i < MAX_CLI; i++) {
+					if (clients[i] && strcmp(clients[i]->channel, cli->channel) == 0) {
+						otherClients = 1;
+						sprintf(buffer, "%s- %s%s\n", serverMsgColor, clients[i]->nick, defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
 					}
 				}
 
-				// If channel does not exist and there's room available for one more channel, create new channel
-				if (newChannel) {
-					if (channelAvailable > 0) {
-						for (int i = 0; i < CHANNEL_NUM; i++) {
-							if (channel_list[i][0] == '\0') {
-								strcpy(channel_list[i], channel);
-								cli->isAdmin = 1;
-								break;
-							}
+				if (!otherClients) {
+					sprintf(buffer, "%sComo você era o único aqui, seu canal já era!%s\n", serverMsgColor, defltColor);
+					write(cli->sockfd, buffer, strlen(buffer));
+
+					for (int i = 0; i < CHANNEL_NUM; i++) {
+						if (strcmp(channel_list[i].chName, cli->channel) == 0) {
+							// FUNÇÃO deleteChannel
+							memset(channel_list[i].chName, '\0', CHANNEL_LEN);
+							memset(channel_list[i].chMode, '\0', 3);
+
+							for(int j = 0; j < CHANNEL_NUM; j++)
+								memset(channel_list[i].inviteUser[j], '\0', NICK_LEN);
+
+							channel_list[i].nroInvUser = 0;
 						}
-					} else if (channelAvailable == 0) {
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "Não há espaço para novos canais!\n");
-						write(cli->sockfd, buffer, strlen(buffer));
-					}	
+					}
 				}
 
-				//  Notifies other clients that this client has joined the channel
-				sprintf(buffer, "%s%s entrou no canal %s!%s\n", cli->color, cli->nick, cli->channel, defltColor);
-				printf("%s", buffer);
+				if (otherClients) {
+					// memset(buffer, '\0', strlen(buffer));
+					sprintf(buffer, "%sQuem seria o novo admin do canal %s?%s\n", serverMsgColor, cli->channel, defltColor);
+					write(cli->sockfd, buffer, strlen(buffer));
 
-				send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+					char newAdmin[NICK_LEN];
+					strcpy(newAdmin, "default");
+					int resp;
+
+					memset(buffer, '\0', strlen(buffer));
+
+					resp = recv(cli->sockfd, buffer, NICK_LEN+MSG_LEN, 0);
+					nick_trim(buffer, newAdmin);
+
+					// printf("recv - %d\n", resp);
+					str_trim(newAdmin, strlen(newAdmin));
+					printf("%s\n", newAdmin+1);
+
+					int clientFound = 0;
+					for (int i = 0; i < MAX_CLI; i++) {
+						if (clients[i] && strcmp(newAdmin+1, clients[i]->nick) == 0 && strcmp(cli->channel, clients[i]->channel) == 0) {
+							clients[i]->isAdmin = 1;
+							clients[i]->isMuted = 0;
+
+							sprintf(buffer, "%sAgora você é o admin! Lembre-se: com grandes poderes vêm grandes responsabilidades!\n\n%s", serverMsgColor, defltColor);
+							write(clients[i]->sockfd, buffer, strlen(buffer));
+
+							clientFound = 1;
+							break;
+						}
+					}
+
+					if (!clientFound) {
+						sprintf(buffer, "%sCliente não encontrado! Tente novamente...\n\n%s", serverMsgColor, defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
+					}
+				}
+				
+
 			}
 
+			sprintf(buffer, "%s%s saiu do canal.%s\n", cli->color, cli->nick, defltColor);
+			printf("%s", buffer);
+			send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+
+			strcpy(cli->channel, "&default");
+			sprintf(buffer, "%sVocê saiu do canal.%s\n", cli->color, defltColor);
+			write(cli->sockfd, buffer, strlen(buffer));
+			
+			// write(cli->sockfd, menuChannel, strlen(menuChannel));
+			
+		// Checks if the client wants to join some channel
+		} else if(strncmp(msg, " /join", 6) == 0) {
+
+			get_substring(channel, msg, 7, CHANNEL_LEN);
+			str_trim(channel, strlen(channel));
+
+			int publicChannel = 1;
+			int invitedUser = 0;
+
+			// Checking if it's an invite-only channel and, if so, if the client
+			//was invited to it
+			for(int i = 0; i < CHANNEL_NUM; i++){
+				if(strcmp(channel_list[i].chName, channel) == 0 &&
+				        strcmp(channel_list[i].chMode, "+i") == 0 ){
+
+					publicChannel = 0;
+
+					for(int j = 0; j < MAX_CLI; j++){
+						if(strcmp(channel_list[i].inviteUser[j], cli->nick) == 0){
+							invitedUser = 1;
+						}
+
+						break;
+					}
+
+					break;
+				}
+			}
+
+			// Dealing with the impossibility of joining the channel
+			if(!check_channel(channel) || !check_nick(cli->nick, channel) ||
+		       (!publicChannel && !invitedUser)){
+
+				memset(buffer, '\0', BUFFER_MAX);
+
+				// If the channel is invalid
+				if(!check_channel(channel)){
+					sprintf(buffer, "%s\nInsira um nome de canal válido!\n\n%s", serverMsgColor, defltColor);
+				}
+				// If the user already participates in that channel
+				else if(strcmp(cli->channel,channel) == 0){
+					sprintf(buffer, "%s\nVocê já está neste canal!\n\n%s", serverMsgColor, defltColor);
+				}
+				// If it is an invite-only channel and the user has not been invited
+				else if(!publicChannel && !invitedUser){
+					sprintf(buffer, "%s\nDesculpe... Este é um canal invite-only e você não foi convidado.\n\n%s", serverMsgColor, defltColor);
+				}
+				// If there is already an user with that nickname on the channel
+				else{
+					sprintf(buffer, "%s\nJá existe um usuário com nickname %s nesse chat, para entrar mude seu nick com o comando: \"/nickname novo_nick\"!\n\n%s", serverMsgColor, cli->nick, defltColor);
+				}
+
+				write(cli->sockfd, buffer, strlen(buffer));
+
+			// Dealing with the possibility of joining the channel
+			} else{
+
+				// Design decision: the user can only participate in one channel
+				//at a time, so he cannot switch channels unless he disconnects
+				//from the current one
+				if (strcmp(cli->channel, channel_list[0].chName) != 0) {
+					sprintf(buffer, "%s\nNada de ficar mudando de sala! Sem bagunça no KalinkUOL! Saia do servidor e entre novamente para poder se juntar a um outro canal.\n\n%s", serverMsgColor, defltColor);
+
+					write(cli->sockfd, buffer, strlen(buffer));
+
+				// If the user is not active on any specific channel yet (that
+				//is, he is on the default channel) then he can join any
+				} else {
+					strcpy(cli->channel, channel);
+
+					// Checks if channel requested already exists
+					int newChannel = 1;
+					int channelAvailable = 0;
+
+					for (int i = 0; i < CHANNEL_NUM; i++) {
+						if (channel_list[i].chName[0] == '\0') {
+							channelAvailable++;
+						}
+
+						// If the channel already exists, the user is inserted
+						//into it as a regular one (that is, he will not be an administrator)
+						else if (strcmp(channel, channel_list[i].chName) == 0) {
+							newChannel = 0;
+							cli->isAdmin = 0;
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%s\nBem-vindo ao canal %s, vulgo melhor canal!\n\n%s",serverMsgColor, channel, defltColor);
+							write(cli->sockfd, buffer, strlen(buffer));
+							break;
+						}
+					}
+
+					// If channel does not exist
+					if (newChannel) {
+						// And if there's room available for one more channel, a
+						//new channel will be created and the user will be the
+						//administrator.
+						if (channelAvailable > 0) {
+							for (int i = 0; i < CHANNEL_NUM; i++) {
+								if (channel_list[i].chName[0] == '\0') {
+									strcpy(channel_list[i].chName, channel);
+									cli->isAdmin = 1;
+									memset(buffer, '\0', BUFFER_MAX);
+
+									sprintf(buffer, "%s\nBem-vindo ao canal %s. Você é o admin! Lembre-se: com grandes poderes vêm grandes responsabilidades!\n\n%s",serverMsgColor, channel, defltColor);
+									write(cli->sockfd, buffer, strlen(buffer));
+									break;
+								}
+							}
+
+						// If there's no room available...
+						} else if (channelAvailable == 0) {
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%s\nNão há espaço para novos canais!\n\n%s", serverMsgColor, defltColor);
+							strcpy(cli->channel,channel_list[0].chName);
+							write(cli->sockfd, buffer, strlen(buffer));
+						}
+					}
+
+					//  Notifies other clients that this client has joined the channel
+					sprintf(buffer, "\n%s%s entrou no canal %s!%s\n\n", cli->color, cli->nick, cli->channel, defltColor);
+					printf("%s", buffer);
+
+					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+				}
+			}
 		} else if(strcmp(msg, " /ping\n") == 0) {
 
 			char reply[5] = "pong\n";
 			write(cli->sockfd, reply, strlen(reply));
-		
+
 		} else if(strncmp(msg, " /nickname", 10) == 0) {
-			
+
 			memset(nick, '\0', NICK_LEN);
 			get_substring(nick, msg, 11, NICK_LEN);
 		  	str_trim(nick, NICK_LEN);
 
 			memset(buffer, '\0', BUFFER_MAX);
-			sprintf(buffer, "%s agora se chama %s!\n", cli->nick, nick);
+			sprintf(buffer, "\n%s%s agora se chama %s!\n\n%s", cli->color, cli->nick, nick, defltColor);
 			printf("%s", buffer);
 			send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
 			strcpy(cli->nick, nick);
-			
+
 			memset(buffer, '\0', BUFFER_MAX);
-			sprintf(buffer, "Nick alterado para %s!\n", cli->nick);
+			sprintf(buffer, "\n%sNick alterado para %s!\n\n%s", serverMsgColor, cli->nick, defltColor);
 			write(cli->sockfd, buffer, strlen(buffer));
 
 		} else if(strncmp(msg, " /kick", 6) == 0) {
@@ -327,17 +535,17 @@ void* handle_client(void* arg) {
 
 				for (int i = 0; i < MAX_CLI; i++) {
 
-					if (strcmp(nick, clients[i]->nick) == 0) {
-						strcpy(clients[i]->channel, channel_list[0]);
+					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
+						strcpy(clients[i]->channel, channel_list[0].chName);
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "Você foi eliminado da casa do Big Kalinka Brasil.\n");
+						sprintf(buffer, "\n%sVocê foi eliminado da casa do Big Kalinka Brasil.\n\n%s", serverMsgColor, defltColor);
 						write(clients[i]->sockfd, buffer, strlen(buffer));
-				
+
 						sleep(0.7);
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "/kicked");
+						sprintf(buffer, "\n%s/kicked\n\n%s", serverMsgColor, defltColor);
 						write(clients[i]->sockfd, buffer, strlen(buffer));
 
 						close(clients[i]->sockfd);
@@ -346,10 +554,10 @@ void* handle_client(void* arg) {
 						free(clients[i]);
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s não está mais espalhando seu fedor no canal!\n", nick);
+						sprintf(buffer, "\n%s%s não está mais espalhando seu fedor no canal!\n\n%s", serverMsgColor, nick, defltColor);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -357,12 +565,13 @@ void* handle_client(void* arg) {
 
 				if (!clientFound) {
 					memset(buffer, '\0', BUFFER_MAX);
-					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
+					sprintf(buffer, "\n%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 				}
+
 			} else {
 				memset(buffer, '\0', BUFFER_MAX);
-				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nSe quer kickar geral, cria seu próprio canal!\n");
+				sprintf(buffer, "\n%sTá achando que aqui é casa da mãe Joana?\nSe quer kickar geral, cria seu próprio canal!\n\n%s", serverMsgColor, defltColor);
 				write(cli->sockfd, buffer, strlen(buffer));
 			}
 
@@ -376,19 +585,19 @@ void* handle_client(void* arg) {
 
 				for (int i = 0; i < MAX_CLI; i++) {
 
-					if (strcmp(nick, clients[i]->nick) == 0) {
+					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "Shh, cala boquinha.\n");
+						sprintf(buffer, "\n%sShh, cala boquinha.\n\n%s", serverMsgColor, defltColor);
 						write(clients[i]->sockfd, buffer, strlen(buffer));
 
 						clients[i]->isMuted = 1;
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s foi silenciadah!\n", nick);
+						sprintf(buffer, "\n%s%s foi silenciadah!\n\n%s", serverMsgColor, nick, defltColor);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -396,12 +605,13 @@ void* handle_client(void* arg) {
 
 				if (!clientFound) {
 					memset(buffer, '\0', BUFFER_MAX);
-					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
+					sprintf(buffer, "\n%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 				}
-			} else {
+			}
+			else {
 				memset(buffer, '\0', BUFFER_MAX);
-				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nSe quer mutar geral, cria seu próprio canal!\n");
+				sprintf(buffer, "\n%sTá achando que aqui é casa da mãe Joana?\nSe quer mutar geral, cria seu próprio canal!\n\n%s", serverMsgColor, defltColor);
 				write(cli->sockfd, buffer, strlen(buffer));
 			}
 
@@ -415,19 +625,19 @@ void* handle_client(void* arg) {
 
 				for (int i = 0; i < MAX_CLI; i++) {
 
-					if (strcmp(nick, clients[i]->nick) == 0) {
+					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "Tá, pode falar.\n");
+						sprintf(buffer, "\n%sTá, pode falar.\n\n%s", serverMsgColor, defltColor);
 						write(clients[i]->sockfd, buffer, strlen(buffer));
 
 						clients[i]->isMuted = 0;
 
 						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s foi liberadah!\n", nick);
+						sprintf(buffer, "\n%s%s foi liberadah!\n\n%s", serverMsgColor, nick, defltColor);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-						
+
 						clientFound = 1;
 						break;
 					}
@@ -435,16 +645,156 @@ void* handle_client(void* arg) {
 
 				if (!clientFound) {
 					memset(buffer, '\0', BUFFER_MAX);
-					sprintf(buffer, "Cliente %s não encontrado.\n", nick);
+					sprintf(buffer, "\n%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 				}
 			} else {
 				memset(buffer, '\0', BUFFER_MAX);
-				sprintf(buffer, "Tá achando que aqui é casa da mãe Joana?\nPode sair desmutando assim não!\n");
+				sprintf(buffer, "\n%sTá achando que aqui é casa da mãe Joana?\nPode sair desmutando assim não!\n\n%s", serverMsgColor, defltColor);
 				write(cli->sockfd, buffer, strlen(buffer));
 			}
 
-		} else if(receive > 0) {
+		} else if(strncmp(msg, " /whois", 7) == 0) {
+
+			if(cli->isAdmin) {
+				get_substring(nick, msg, 8, NICK_LEN);
+				str_trim(nick, NICK_LEN);
+
+				int clientFound = 0;
+
+				for (int i = 0; i < MAX_CLI; i++) {
+
+					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "\n%sO endereço de IP de %s é %s\n\n%s", serverMsgColor, clients[i]->nick,inet_ntoa(clients[i]->address.sin_addr), defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
+						clientFound = 1;
+						break;
+					}
+				}
+
+				if (!clientFound) {
+
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "\n%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
+					write(cli->sockfd, buffer, strlen(buffer));
+				}
+
+			}else {
+				memset(buffer, '\0', BUFFER_MAX);
+				sprintf(buffer, "\n%sTá achando que aqui é casa da mãe Joana?\nPode sair querendo saber os IP dos outros assim não!\n\n%s", serverMsgColor, defltColor);
+				write(cli->sockfd, buffer, strlen(buffer));
+			}
+
+
+		} else if(strncmp(msg, " /mode", 6) == 0) {
+
+			if(cli->isAdmin) {
+				get_substring(mode, msg, 7, 3);
+				str_trim(mode, 3);
+
+				// Finding the channel for which the administrator is responsible
+				for (int i = 0; i < CHANNEL_NUM; i++) {
+					if (strcmp(channel_list[i].chName, cli->channel) == 0) {
+						strcpy(channel_list[i].chMode, mode);
+
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "%s\nEste canal agora é invite-only!\n\n%s", serverMsgColor, defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
+
+						break;
+					}
+				}
+			}else {
+				memset(buffer, '\0', BUFFER_MAX);
+				sprintf(buffer, "%s\nPoxa... Somente o administrador possui o direito de mudar o mode do canal.\n\n%s", serverMsgColor, defltColor);
+				write(cli->sockfd, buffer, strlen(buffer));
+			}
+
+
+		} else if(strncmp(msg, " /invite", 8) == 0) {
+
+			if(cli->isAdmin) {
+				get_substring(nick, msg, 9, NICK_LEN);
+				str_trim(nick, NICK_LEN);
+
+				int clientFound = 0;
+				int clientExists = 0;
+				int idChannel = 0;
+				int publicChannel = 1;
+
+				// Finding the channel for which the administrator is responsible
+				for (int i = 0; i < CHANNEL_NUM; i++) {
+					if (strcmp(channel_list[i].chName, cli->channel) == 0) {
+						idChannel = i;
+
+						if(channel_list[i].chMode[0] != '\0'){
+							publicChannel = 0;
+						}
+
+						break;
+					}
+				}
+
+				if(publicChannel){
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "\n%sNão é possível convidar alguém para um canal que não é invite-only.\n\n%s", serverMsgColor, defltColor);
+					write(cli->sockfd, buffer, strlen(buffer));
+				}
+				else{
+					// Checking if the user exists and if isn't already invited to that channel
+					for (int i = 0; i < MAX_CLI; i++) {
+
+						if (clients[i] && strcmp(nick, clients[i]->nick) == 0)
+							clientExists = 1;
+
+						if (strcmp(channel_list[idChannel].inviteUser[i], nick) == 0) {
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "\n%sO usuário %s já foi convidado a se juntar a este chat.\n\n%s", serverMsgColor, nick, defltColor);
+							write(cli->sockfd, buffer, strlen(buffer));
+
+							break;
+						}
+					}
+
+					// If the user has not yet been invited and it is possible to
+					//invite more users to the chat, the process is done
+					if(clientExists && !clientFound && channel_list[idChannel].nroInvUser < MAX_CLI - 1){
+						for(int i = 0; i < MAX_CLI; i++){
+							if(channel_list[idChannel].inviteUser[i][0] == '\0'){
+								strcpy(channel_list[idChannel].inviteUser[i], nick);
+
+								memset(buffer, '\0', BUFFER_MAX);
+								sprintf(buffer, "\n%sO usuário %s foi convidado a se juntar a este chat.\n\n%s", serverMsgColor, nick, defltColor);
+								write(cli->sockfd, buffer, strlen(buffer));
+
+								channel_list[idChannel].nroInvUser++;
+
+								break;
+							}
+						}
+
+					}
+					else if(!clientExists){
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "\n%sO usuário precisa estar conectado ao servidor para poder ser convidado a participar deste canal.%s\n\n", serverMsgColor, defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
+					}
+					else if(channel_list[idChannel].nroInvUser >= MAX_CLI - 1){
+						memset(buffer, '\0', BUFFER_MAX);
+						sprintf(buffer, "\n%sO canal já atingiu o número máximo de usuários convidados.%s\n\n", serverMsgColor, defltColor);
+						write(cli->sockfd, buffer, strlen(buffer));
+					}
+				}
+			}
+			else {
+				memset(buffer, '\0', BUFFER_MAX);
+				sprintf(buffer, "\n%sPoxa... Somente o administrador pode convidar usuários para este canal.\n\n%s", serverMsgColor, defltColor);
+				write(cli->sockfd, buffer, strlen(buffer));
+			}
+
+		}else if(receive > 0) {
 
 			if(strlen(buffer) > 0) {
 				// str_overwrite_stdout();
@@ -453,12 +803,9 @@ void* handle_client(void* arg) {
 				change_color(buffer, n);
 				snprintf(buffer, strlen(n)+strlen(buffer)+19, "%s%s%s:%s", cli->color, n, defltColor, msg);
 
-				printf("mutado: %d\n", cli->isMuted);
 				if (cli->isMuted == 0)
 					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
-				else {
-					printf("mutadah\n");
-				}
+
 
 				// printf("%s%s%s", cli->color, buffer, defltColor);
 
@@ -488,26 +835,28 @@ void* handle_client(void* arg) {
 
 
 int main(int argc, char* const argv[]) {
-	// if(argc != 2) {
-	// 	printf("Erro. Tente: %s <port>\n", argv[0]);
 
-	// 	// EXIT FAILURE
-	// 	return 1;
-	// }
-
-	char* IP = "127.0.0.1";
-	int port = 1234;
-	// int port = atoi(argv[1]);
+	char* IP = "0.0.0.0";
+	int port = 8192;
 
 	int option = 1;
 	int listenfd = 0, connfd = 0;
 	struct sockaddr_in server_addr, client_addr;
 	pthread_t tid;
 
-	for (int i = 0; i < 10; i++) {
-		memset(channel_list[i], '\0', CHANNEL_LEN);
+
+	for (int i = 0; i < MAX_CLI; i++) {
+		memset(channel_list[i].chName, '\0', CHANNEL_LEN);
+		memset(channel_list[i].chMode, '\0', 3);
+
+		for(int j = 0; j < CHANNEL_NUM; j++){
+			memset(channel_list[i].inviteUser[j], '\0', NICK_LEN);
+		}
+
+		channel_list[i].nroInvUser = 0;
 	}
-	strcpy(channel_list[0], "default");
+
+	strcpy(channel_list[0].chName, "&default");
 
 	/* -------------------------- Socket settings --------------------------
 
@@ -604,7 +953,7 @@ int main(int argc, char* const argv[]) {
 		cli->address = client_addr;
 		cli->sockfd = connfd;
 		cli->userID = userID++;
-		strcpy(cli->channel, channel_list[0]);
+		strcpy(cli->channel, channel_list[0].chName);
 		cli->isMuted = 0;
 
 		add_client(cli);
@@ -613,8 +962,6 @@ int main(int argc, char* const argv[]) {
 
 		// Reducing CPU usage
 		sleep(1);
-
-		// catch_ctrl_d_and_exit(2);
 	}
 
 	// EXIT SUCCESS
