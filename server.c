@@ -280,16 +280,15 @@ int find_other_clients(Client* cli) {
 	char buffer[BUFFER_MAX] = {};
 
 	int otherClients = 0;
-		for (int i = 0; i < MAX_CLI; i++) {
 
-			if (clients[i] && clients[i]->userID != cli->userID && strcmp(clients[i]->channel, cli->channel) == 0) {
+	for (int i = 0; i < MAX_CLI; i++) {
 
-				otherClients = 1;
-				sprintf(buffer, "%s- %s%s\n", serverMsgColor, clients[i]->nick, defltColor);
-				write(cli->sockfd, buffer, strlen(buffer));
-
-			}
+		if (clients[i] && clients[i]->userID != cli->userID && strcmp(clients[i]->channel, cli->channel) == 0) {
+			otherClients = 1;
+			sprintf(buffer, "%s- %s%s\n", serverMsgColor, clients[i]->nick, defltColor);
+			write(cli->sockfd, buffer, strlen(buffer));
 		}
+	}
 
 	return otherClients;
 }
@@ -325,7 +324,7 @@ void* handle_client(void* arg) {
 
 		strcpy(cli->nick, nick);
 		//  Notifies other clients that this client has joined the chatroom
-		sprintf(buffer, "%s%s entrou no servidor!%s", cli->color, cli->nick, defltColor);
+		sprintf(buffer, "%s%s entrou no servidor!\n%s", cli->color, cli->nick, defltColor);
 		printf("%s", buffer);
 
 		welcome_menu(cli);
@@ -361,7 +360,7 @@ void* handle_client(void* arg) {
 
 				if (find_other_clients(cli)) {
 					// memset(buffer, '\0', strlen(buffer));
-					sprintf(buffer, "%sQuem seria o novo admin do canal %s?%s\n", serverMsgColor, cli->channel, defltColor);
+					sprintf(buffer, "%sDados os clientes acima, quem será o novo admin do canal %s?%s\n", serverMsgColor, cli->channel, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 
 					char newAdmin[NICK_LEN];
@@ -396,7 +395,7 @@ void* handle_client(void* arg) {
 						write(cli->sockfd, buffer, strlen(buffer));
 					}
 				} else {
-					sprintf(buffer, "%sComo você era a única pessoa aqui, seu canal já era!%s\n", serverMsgColor, defltColor);
+					sprintf(buffer, "%sComo você era a única pessoa aqui, seu canal já era!%s\n\n", serverMsgColor, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 
 					for (int i = 0; i < CHANNEL_NUM; i++) {
@@ -538,7 +537,7 @@ void* handle_client(void* arg) {
 					}
 
 					//  Notifies other clients that this client has joined the channel
-					sprintf(buffer, "\n%s%s entrou no canal %s!%s\n\n", cli->color, cli->nick, cli->channel, defltColor);
+					sprintf(buffer, "%s%s entrou no canal %s!%s\n", cli->color, cli->nick, cli->channel, defltColor);
 					printf("%s", buffer);
 
 					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
@@ -577,27 +576,34 @@ void* handle_client(void* arg) {
 				for (int i = 0; i < MAX_CLI; i++) {
 
 					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
-						strcpy(clients[i]->channel, channel_list[0].chName);
+						if(!clients[i]->isAdmin){
+							strcpy(clients[i]->channel, channel_list[0].chName);
 
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%sVocê foi eliminado da casa do Big Kalinka Brasil.\n\n%s", serverMsgColor, defltColor);
-						write(clients[i]->sockfd, buffer, strlen(buffer));
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%sVocê foi eliminado da casa do Big Kalinka Brasil.\n\n%s", serverMsgColor, defltColor);
+							write(clients[i]->sockfd, buffer, strlen(buffer));
 
-						sleep(0.7);
+							sleep(0.7);
 
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s/kicked\n\n%s", serverMsgColor, defltColor);
-						write(clients[i]->sockfd, buffer, strlen(buffer));
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%s/kicked\n\n%s", serverMsgColor, defltColor);
+							write(clients[i]->sockfd, buffer, strlen(buffer));
 
-						close(clients[i]->sockfd);
-						remove_client(clients[i]->userID);
-						cliCount--;
-						free(clients[i]);
+							close(clients[i]->sockfd);
+							remove_client(clients[i]->userID);
+							cliCount--;
+							free(clients[i]);
 
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s%s não está mais espalhando seu fedor no canal!\n\n%s", serverMsgColor, nick, defltColor);
-						printf("%s", buffer);
-						write(cli->sockfd, buffer, strlen(buffer));
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%s%s não está mais espalhando seu fedor no canal!\n\n%s", serverMsgColor, nick, defltColor);
+							printf("%s", buffer);
+							write(cli->sockfd, buffer, strlen(buffer));
+						}
+						else{
+							memset(buffer, '\0', BUFFER_MAX);
+							sprintf(buffer, "%sVocê não pode kikar a si mesmo do chat.\n\n%s", serverMsgColor, defltColor);
+							write(clients[i]->sockfd, buffer, strlen(buffer));
+						}
 
 						clientFound = 1;
 						break;
