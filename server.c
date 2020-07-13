@@ -340,8 +340,21 @@ int change_admin(Client*cli){
             break;
         }
     }
+
+	cli->isAdmin = 0;
     
     return clientFound;
+}
+
+int find_client(char* nick,Client* cli){
+	
+
+	for (int i = 0; i < MAX_CLI; i++) {
+
+		if (clients[i] && strcmp(nick, clients[i]->nick) == 0 && strcmp(cli->channel,clients[i]->channel) == 0)  
+			return i;
+	}
+	return -1;
 
 }
 // Handles clients, assigns their values and joins the chat
@@ -425,6 +438,7 @@ void* handle_client(void* arg) {
                     
                     delete_channel(cli);
 
+					//client leaves the channel
 					strcpy(cli->channel, "&default");
 					cli->isAdmin = 0;
 
@@ -565,6 +579,8 @@ void* handle_client(void* arg) {
 		} else if(strncmp(msg, " /nickname", 10) == 0) {
 
 			memset(nick, '\0', NICK_LEN);
+
+			// get new nickname
 			get_substring(nick, msg, 11, NICK_LEN);
 		  	str_trim(nick, NICK_LEN);
 
@@ -573,6 +589,7 @@ void* handle_client(void* arg) {
 			printf("%s", buffer);
 			send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
+			//change the nickname
 			strcpy(cli->nick, nick);
 
 			memset(buffer, '\0', BUFFER_MAX);
@@ -638,33 +655,30 @@ void* handle_client(void* arg) {
 
 		} else if(strncmp(msg, " /mute", 6) == 0) {
 
+			//only admin cans mute people
 			if(cli->isAdmin) {
+
+				//get who will be muted
 				get_substring(nick, msg, 7, NICK_LEN);
 				str_trim(nick, NICK_LEN);
 
-				int clientFound = 0;
+				int clientFound = find_client(nick,cli);
 
-				for (int i = 0; i < MAX_CLI; i++) {
-
-					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
-
+				if(clientFound!=-1){
+					
+						//notify that the client is muted
 						memset(buffer, '\0', BUFFER_MAX);
 						sprintf(buffer, "%sShh, cala boquinha.\n\n%s", serverMsgColor, defltColor);
-						write(clients[i]->sockfd, buffer, strlen(buffer));
+						write(clients[clientFound]->sockfd, buffer, strlen(buffer));
 
-						clients[i]->isMuted = 1;
+						clients[clientFound]->isMuted = 1;
 
 						memset(buffer, '\0', BUFFER_MAX);
 						sprintf(buffer, "%s%s foi silenciadah!\n\n%s", serverMsgColor, nick, defltColor);
 						printf("%s", buffer);
 						write(cli->sockfd, buffer, strlen(buffer));
-
-						clientFound = 1;
-						break;
-					}
 				}
-
-				if (!clientFound) {
+				else {
 					memset(buffer, '\0', BUFFER_MAX);
 					sprintf(buffer, "%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
@@ -679,36 +693,31 @@ void* handle_client(void* arg) {
 		} else if(strncmp(msg, " /unmute", 8) == 0) {
 
 			if(cli->isAdmin) {
+
+				//get who will be unmuted
 				get_substring(nick, msg, 9, NICK_LEN);
 				str_trim(nick, NICK_LEN);
 
-				int clientFound = 0;
+				int clientFound = find_client(nick,cli);
 
-				for (int i = 0; i < MAX_CLI; i++) {
+				if(clientFound!=-1){
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "%sTá, pode falar.\n\n%s", serverMsgColor, defltColor);
+					write(clients[clientFound]->sockfd, buffer, strlen(buffer));
 
-					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
+					clients[clientFound]->isMuted = 0;
 
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%sTá, pode falar.\n\n%s", serverMsgColor, defltColor);
-						write(clients[i]->sockfd, buffer, strlen(buffer));
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "%s%s foi liberadah!\n\n%s", serverMsgColor, nick, defltColor);
+					printf("%s", buffer);
+					write(cli->sockfd, buffer, strlen(buffer));
 
-						clients[i]->isMuted = 0;
-
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%s%s foi liberadah!\n\n%s", serverMsgColor, nick, defltColor);
-						printf("%s", buffer);
-						write(cli->sockfd, buffer, strlen(buffer));
-
-						clientFound = 1;
-						break;
-					}
-				}
-
-				if (!clientFound) {
+				} else {
 					memset(buffer, '\0', BUFFER_MAX);
 					sprintf(buffer, "%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
 					write(cli->sockfd, buffer, strlen(buffer));
 				}
+
 			} else {
 				memset(buffer, '\0', BUFFER_MAX);
 				sprintf(buffer, "%sTá achando que aqui é casa da mãe Joana?\nPode sair desmutando assim não!\n\n%s", serverMsgColor, defltColor);
@@ -721,21 +730,15 @@ void* handle_client(void* arg) {
 				get_substring(nick, msg, 8, NICK_LEN);
 				str_trim(nick, NICK_LEN);
 
-				int clientFound = 0;
+				int clientFound = find_client(nick,cli);
 
-				for (int i = 0; i < MAX_CLI; i++) {
+				if(clientFound!=-1){
 
-					if (clients[i] && strcmp(nick, clients[i]->nick) == 0) {
-
-						memset(buffer, '\0', BUFFER_MAX);
-						sprintf(buffer, "%sO endereço de IP de %s é %s\n\n%s", serverMsgColor, clients[i]->nick,inet_ntoa(clients[i]->address.sin_addr), defltColor);
-						write(cli->sockfd, buffer, strlen(buffer));
-						clientFound = 1;
-						break;
-					}
-				}
-
-				if (!clientFound) {
+					memset(buffer, '\0', BUFFER_MAX);
+					sprintf(buffer, "%sO endereço de IP de %s é %s\n\n%s", serverMsgColor, clients[clientFound]->nick,inet_ntoa(clients[clientFound]->address.sin_addr), defltColor);
+					write(cli->sockfd, buffer, strlen(buffer));
+					
+				} else {
 
 					memset(buffer, '\0', BUFFER_MAX);
 					sprintf(buffer, "%sCliente %s não encontrado.\n\n%s", serverMsgColor, nick, defltColor);
@@ -939,12 +942,12 @@ int main(int argc, char* const argv[]) {
 
 	/* This helps manipulating options for the socket referred by the
 	 descriptor sockfd; it also prevents errors. */
-//    if(setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char*) &option, sizeof(option)) < 0) {
-//        printf("\nErro: setsockopt.\n");
-//
-//        // EXIT FAILURE;
-//        exit(1);
-//    }
+   if(setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char*) &option, sizeof(option)) < 0) {
+       printf("\nErro: setsockopt.\n");
+
+       // EXIT FAILURE;
+       exit(1);
+   }
 
 	/* After creating the socket, the bind() function binds the
 	 socket to the address and the port number specified in addr. */
