@@ -62,7 +62,7 @@ void receive_message_handler() {
 	// While there are messages to be received
 	while(1) {
 		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN+SIZE_COLORS, 0);
-
+		
 		// If something was written
 		if (strcmp(msg, "/kicked") == 0) {
 			leaveFlag = 1;
