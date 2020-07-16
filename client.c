@@ -158,7 +158,7 @@ void input_nickname() {
 
 	// Checks if the given nickname is valid
 	if(strlen(nick) > NICK_LEN - 1 || strlen(nick) < 2) {
-		printf("\nDigite um nick válido.\nO nick deve possuir de 2 a 15 caracteres.\n");
+		printf("\nDigite um nick válido.\nO nick deve possuir de 2 a 49 caracteres.\n");
 
 		// EXIT FAILURE
 		exit(1);
