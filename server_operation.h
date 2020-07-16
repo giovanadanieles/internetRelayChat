@@ -15,7 +15,7 @@
 #define MAX_CLI 10
 #define MSG_LEN 2049
 #define CHANNEL_LEN 200
-#define CHANNEL_NUM 10
+#define CHANNEL_NUM 5
 
 // === STRUCTURES RELATED TO SERVER OPERATION ===
 
@@ -153,6 +153,12 @@ int find_client(char* nick, Client* cli);
 	PARAMETERS
 	Client* cli - current client */
 int find_channel(Client* cli);
+
+/* Clears the list of invited users for a given chat.
+
+	PARAMETERS
+	int idChannel - The channel id to be cleared */
+void clear_invite_list(int idChannel);
 
 /* Handles clients, assigns their values and joins the chat.
 
