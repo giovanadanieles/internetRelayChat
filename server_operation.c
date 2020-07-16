@@ -205,16 +205,22 @@ void welcome_menu(Client* cli) {
 void client_leaves_channel(Client* cli) {
 	char buffer[BUFFER_MAX] = {};
 
-	sprintf(buffer, "%s%s saiu do canal.%s\n", cli->color, cli->nick, defltColor);
-	printf("%s", buffer);
-	send_message_to_channel(buffer, cli->userID, cli->channel, 0);
+	if(strcmp(cli->channel, "&default") == 0){
+		sprintf(buffer, "%sNão é possível deixar o canal &default.%s\n", serverMsgColor, defltColor);
+		write(cli->sockfd, buffer, strlen(buffer));
+	}
+	else{
+		sprintf(buffer, "%s%s saiu do canal.%s\n", cli->color, cli->nick, defltColor);
+		printf("%s", buffer);
+		send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
-	strcpy(cli->channel, "&default");
+		strcpy(cli->channel, "&default");
 
-	sprintf(buffer, "%sVocê saiu do canal.%s\n", cli->color, defltColor);
-	write(cli->sockfd, buffer, strlen(buffer));
+		sprintf(buffer, "%sVocê saiu do canal.%s\n", cli->color, defltColor);
+		write(cli->sockfd, buffer, strlen(buffer));
 
-	channel_menu(cli);
+		channel_menu(cli);
+	}
 }
 
 // Finds other clients in the same channel and list
@@ -577,6 +583,11 @@ void* handle_client(void* arg) {
 							memset(buffer, '\0', BUFFER_MAX);
 							sprintf(buffer, "%sVocê foi eliminado do canal %s, talvez você devesse repensar suas ações.\n\n%s", serverMsgColor, cli->channel,defltColor);
 							write(clients[clientFound]->sockfd, buffer, strlen(buffer));
+							
+							sleep(0.7);
+
+							channel_menu(clients[clientFound]);
+
 							sleep(0.7);
 
 							memset(buffer, '\0', BUFFER_MAX);
