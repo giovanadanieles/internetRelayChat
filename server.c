@@ -17,7 +17,7 @@
 int main(int argc, char* const argv[]) {
 
 	char* IP = "0.0.0.0";
-	int port = 1234;
+	int port = 8192;
 
 	int option = 1;
 	int listenfd = 0, connfd = 0;
