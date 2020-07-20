@@ -15,7 +15,7 @@ void str_overwrite_stdout();
 void str_trim(char* arr, int len);
 
 /* Separates nick and message from incoming buffer.
-	
+
 	PARAMETERS
 	char* buffer - incoming buffer
 	char* msg 	 - incoming message (without user nickname) */
@@ -24,7 +24,7 @@ void nick_trim(char* buffer, char* msg);
 /* Changes nickname color.
 
 	PARAMETERS
-	char* buffer - incoming buffer 
+	char* buffer - incoming buffer
 	char* n 	 - user's nickame */
 void change_color(char* buffer, char* n);
 

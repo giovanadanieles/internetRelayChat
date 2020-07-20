@@ -2,13 +2,13 @@ all:
 	gcc -Wall -g -pthread string_manipulation.c server_operation.c server.c -o server
 	gcc -Wall -g -pthread client.c -o client
 
-server: 
+server:
 	gcc -Wall -g -pthread string_manipulation.c server_operation.c server.c -o server
 
 client:
 	gcc -Wall -g -pthread client.c -o client
 
-run_server: 
+run_server:
 	./server || true
 
 run_client:

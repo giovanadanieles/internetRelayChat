@@ -62,7 +62,7 @@ void receive_message_handler() {
 	// While there are messages to be received
 	while(1) {
 		int rcv = recv(sockfd, msg, NICK_LEN+BUFFER_LEN+SIZE_COLORS, 0);
-		
+
 		// If something was written
 		if (strcmp(msg, "/kicked") == 0) {
 			leaveFlag = 1;
@@ -120,7 +120,7 @@ void send_message_handler() {
 			break;
 		} else if(strncmp(buffer, "/nickname", 9) == 0) {
 			char newNick[NICK_LEN];
-			
+
 			memset(newNick, '\0', NICK_LEN);
 
 			get_substring(newNick, buffer, 10, NICK_LEN);
@@ -130,7 +130,7 @@ void send_message_handler() {
 				printf("\nErro: nick inválido.\n");
 			} else {
 				strcpy(nick, newNick);
-				
+
 		  		str_trim(buffer, BUFFER_MAX);
 		    	sprintf(msg, "%s: %s\n", nick, buffer);
 				send(sockfd, msg, strlen(msg), 0);
