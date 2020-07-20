@@ -4,10 +4,14 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+<<<<<<< HEAD
 // #include <string.h>
 // #include <netinet/in.h>
 // #include <sys/socket.h>
 // #include <sys/types.h>
+=======
+
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 
 #include "string_manipulation.h"
 
@@ -164,4 +168,8 @@ void clear_invite_list(int idChannel);
 
 	PARAMETERS
 	void* arg - client structure */
+<<<<<<< HEAD
 void* handle_client(void* arg);
+=======
+void* handle_client(void* arg);
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c

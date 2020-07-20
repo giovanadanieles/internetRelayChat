@@ -17,7 +17,7 @@
 int main(int argc, char* const argv[]) {
 
 	char* IP = "0.0.0.0";
-	int port = 1234;
+	int port = 8192;
 
 	int option = 1;
 	int listenfd = 0, connfd = 0;
@@ -97,7 +97,7 @@ int main(int argc, char* const argv[]) {
 	while (1) {
 
 		socklen_t cliLen = sizeof(client_addr);
-		
+
 		/* Responsible for extracting the first connection request on the
 		 queue of pending connections, creating a new connected socket
 		 and returning a new file descriptor referring to that socket. */
@@ -106,7 +106,7 @@ int main(int argc, char* const argv[]) {
 		is_server_full(connfd);
 
 		// -------------------- Client Management --------------------
-		/* Defines client settings, adds it to the queue, 
+		/* Defines client settings, adds it to the queue,
 		creates a thread and a new function to handle client. */
 		Client* cli = (Client*) malloc(sizeof(Client));
 		create_client(client_addr, connfd, cli);

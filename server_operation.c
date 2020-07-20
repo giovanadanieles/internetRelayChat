@@ -52,7 +52,11 @@ void add_client(Client* cli) {
 
 // Creates client structure.
 void create_client(struct sockaddr_in client_addr, int connfd, Client* cli) {
+<<<<<<< HEAD
 	// Client* cli = (Client*) malloc(sizeof(Client));
+=======
+
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 	cli->address = client_addr;
 	cli->sockfd = connfd;
 	cli->userID = userID++;
@@ -61,7 +65,11 @@ void create_client(struct sockaddr_in client_addr, int connfd, Client* cli) {
 
 	add_client(cli);
 
+<<<<<<< HEAD
 	// return cli;
+=======
+
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 }
 
 // Removes clients from the array of clients
@@ -84,7 +92,11 @@ void remove_client(int userID) {
 void send_message_to_channel(char* msg, int userID, char* channel, int leaveFlag) {
 	pthread_mutex_lock(&clients_mutex);
 
+<<<<<<< HEAD
 	// TESTE DE FALHA DE CONEXÃO
+=======
+	//Connection failure test
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 	int teste = 0;
 	if (teste) {
 		Client* cli = (Client*) malloc(sizeof(Client));
@@ -153,7 +165,11 @@ void initialize_channel_list() {
 			channel_list[i].nroInvUser = 0;
 		}
 
+<<<<<<< HEAD
 	strcpy(channel_list[0].chName, "&default");
+=======
+	strcpy(channel_list[0].chName, "#all");
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 }
 
 // Shows channel menu.
@@ -205,8 +221,13 @@ void welcome_menu(Client* cli) {
 void client_leaves_channel(Client* cli) {
 	char buffer[BUFFER_MAX] = {};
 
+<<<<<<< HEAD
 	if(strcmp(cli->channel, "&default") == 0){
 		sprintf(buffer, "%sNão é possível deixar o canal &default.%s\n", serverMsgColor, defltColor);
+=======
+	if(strcmp(cli->channel, "#all") == 0){
+		sprintf(buffer, "%sNão é possível deixar o canal #all.%s\n", serverMsgColor, defltColor);
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 		write(cli->sockfd, buffer, strlen(buffer));
 	}
 	else{
@@ -214,7 +235,11 @@ void client_leaves_channel(Client* cli) {
 		printf("%s", buffer);
 		send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
+<<<<<<< HEAD
 		strcpy(cli->channel, "&default");
+=======
+		strcpy(cli->channel, "#all");
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 
 		sprintf(buffer, "%sVocê saiu do canal.%s\n", cli->color, defltColor);
 		write(cli->sockfd, buffer, strlen(buffer));
@@ -404,7 +429,11 @@ void* handle_client(void* arg) {
                     delete_channel(cli);
 
 					//client leaves the channel
+<<<<<<< HEAD
 					strcpy(cli->channel, "&default");
+=======
+					strcpy(cli->channel, "#all");
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 					cli->isAdmin = 0;
 
 					channel_menu(cli);
@@ -478,9 +507,16 @@ void* handle_client(void* arg) {
 					write(cli->sockfd, buffer, strlen(buffer));
 
 				// If the user is not active on any specific channel yet (that
+<<<<<<< HEAD
 				//is, he is on the default channel) then he can join any
 				} else {
 					strcpy(cli->channel, channel);
+=======
+				//is, he is on the all channel) then he can join any
+				} else {
+					strcpy(cli->channel, channel);
+                    cli->isMuted=0;
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 
 					// Checks if channel requested already exists
 					int newChannel = 1;
@@ -843,7 +879,10 @@ void* handle_client(void* arg) {
 		}else if(receive > 0) {
 
 			if(strlen(buffer) > 0) {
+<<<<<<< HEAD
 				// str_overwrite_stdout();
+=======
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 
 				char n[NICK_LEN];
 				change_color(buffer, n);
@@ -852,7 +891,10 @@ void* handle_client(void* arg) {
 				if (cli->isMuted == 0)
 					send_message_to_channel(buffer, cli->userID, cli->channel, 0);
 
+<<<<<<< HEAD
 				// printf("%s%s%s", cli->color, buffer, defltColor);
+=======
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c
 
 				bzero(buffer, BUFFER_MAX);
 			}
@@ -876,4 +918,8 @@ void* handle_client(void* arg) {
 	pthread_detach(pthread_self());
 
 	return NULL;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> dddcc33f51cc382681e30b3ebd4493122594527c

@@ -175,15 +175,15 @@ void input_nickname() {
 }
 
 int main(int argc, char* const argv[]) {
-	// if(argc != 2) {
-	// 	printf("Erro. Try: %s <port>\n", argv[0]);
-	// 	// EXIT FAILURE
-	// 	return 1;
-	// }
 
-	char* IP = "127.0.0.1";
-	int port = 1234;
-	// int port = atoi(argv[1]);
+	if(argc != 2) {
+    	printf("Erro. Tente: %s <IP>\n", argv[0]);
+    	// EXIT FAILURE
+    	return 1;
+  	}
+
+  	char* IP = argv[1];
+	int port = 8192;
 
 	// Ignores CTRL+C
 	signal(SIGINT, SIG_IGN);
