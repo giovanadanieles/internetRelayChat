@@ -44,7 +44,7 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 <h3>Sobre port forwarding</h3>
 <p>Utilizando um roteador D-Link DI-524, foi criado um virtual server para o Kalinkuol na porta 8192, permitindo que requisições feitas ao endereço público do servidor fossem devidamente redicionadas a ele pelo dispositivo. Para efetivamente permitir que o endereço fosse acessível, o servidor foi colocado na DMZ da rede interna.</p>
 
-<img src = "images/PF1.png"><br>
+<img src = "images/PF1.png"><br><br>
 
 
 
