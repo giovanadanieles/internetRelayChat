@@ -50,7 +50,7 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 
 <h3>Demo</h3>
 <!-- <img src = "images/IRC1.png"><br>
-[//]: #<img src = "images/IRC2.png"><br>
-[//]: #<img src = "images/IRC3.png"><br>
-[//]: #<img src = "images/IRC4.png"><br> -->
+img src = "images/IRC2.png"><br>
+<img src = "images/IRC3.png"><br>
+<img src = "images/IRC4.png"><br> -->
 <img src = "images/IRC5.png">
