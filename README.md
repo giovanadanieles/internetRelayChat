@@ -57,8 +57,3 @@ Marina Fontes Alcântara Machado		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10692040<br>
 <<<<<<< HEAD
 <img src = "images/IRC4.png"><br>
 <img src = "images/IRC5.png">
-=======
-<img src = "images/IRC4.png">
-
-<img src = "images/IRC5.png">
->>>>>>> 761a2c191b1dea19253f73b78a630a0c220fd320
